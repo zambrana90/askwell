@@ -3,6 +3,7 @@ import { APP_NAME } from "@askwell/shared";
 import { afterEach, expect, test, vi } from "vitest";
 import { DashboardNav } from "../../components/dashboard/nav";
 import { NAV_ITEMS } from "../../app/dashboard/nav-items";
+import Loading from "../../app/dashboard/loading";
 import DashboardPage from "../../app/dashboard/page";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/dashboard" }));
@@ -22,4 +23,9 @@ test("nav renders APP_NAME and the Projects link", () => {
   const projects = screen.getByRole("link", { name: "Projects" });
   expect(projects.getAttribute("href")).toBe("/dashboard");
   expect(projects.getAttribute("aria-current")).toBe("page");
+});
+
+test("loading fallback announces a status message", () => {
+  render(<Loading />);
+  expect(screen.getByRole("status").textContent).toBe("Loading projects…");
 });

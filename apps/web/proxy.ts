@@ -13,7 +13,7 @@ export default clerkMiddleware(async (auth, req) => {
   if (isProtectedPage(pathname)) {
     await auth.protect();
   }
-});
+}, { signInUrl: "/sign-in", signUpUrl: "/sign-up" });
 
 export const config = {
   matcher: [

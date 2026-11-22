@@ -240,7 +240,18 @@ importers:
         specifier: ^0.28.0
         version: 0.28.2
 
-  packages/db: {}
+  packages/db:
+    dependencies:
+      '@electric-sql/pglite':
+        specifier: 0.5.17
+        version: 0.5.17
+      '@electric-sql/pglite-pgvector':
+        specifier: 0.0.18
+        version: 0.0.18(@electric-sql/pglite@0.5.17)
+    devDependencies:
+      '@askwell/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/shared:
     dependencies:
@@ -324,6 +335,14 @@ packages:
   '@babel/types@7.29.15':
     resolution: {integrity: sha512-/XKpKDakL//LZ66bq1XsZOswuqeI5MZqPLDu18o3XdkU1fNJ7bdPtzgnc4ZNS+bBGHV0FJG8jjb8SwcC3nNVQQ==}
     engines: {node: '>=6.9.0'}
+
+  '@electric-sql/pglite-pgvector@0.0.18':
+    resolution: {integrity: sha512-G2d2rFS/rsRTXl7fvTuVIhD/fA6MIdDQB3l/xzIyRcDIVUl4KAcAEcqXPPTAXwJlqLViNGHFX+d1yn63V91xpQ==}
+    peerDependencies:
+      '@electric-sql/pglite': 0.5.17
+
+  '@electric-sql/pglite@0.5.17':
+    resolution: {integrity: sha512-8SvKjiUjaU+0O0dbxjOfN+jXz14TEqDWbwDkYOW1aQ11y/ph2JvFVI27ABBo5nfw+ZfSqy4hKCNlbnbB1TDE+g==}
 
   '@emnapi/core@2.0.0-beta.2':
     resolution: {integrity: sha512-MzCVoWtcg4Pm2B3je5mMvYMvj3MmBKw+fU7vbsJc9/iT8ip6/eYIHo/Dsm/mr+wsHB6SEyJDuxB09Yy6r/8+4A==}
@@ -2950,6 +2969,12 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.29.15
       '@babel/helper-validator-identifier': 7.29.7
+
+  '@electric-sql/pglite-pgvector@0.0.18(@electric-sql/pglite@0.5.17)':
+    dependencies:
+      '@electric-sql/pglite': 0.5.17
+
+  '@electric-sql/pglite@0.5.17': {}
 
   '@emnapi/core@2.0.0-beta.2':
     dependencies:

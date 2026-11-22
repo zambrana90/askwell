@@ -251,14 +251,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      owned_conversation_ids: {
-        Args: never
-        Returns: string[]
-      }
-      owned_project_ids: {
-        Args: never
-        Returns: string[]
-      }
+      owned_conversation_ids: { Args: never; Returns: string[] }
+      owned_project_ids: { Args: never; Returns: string[] }
     }
     Enums: {
       [_ in never]: never

@@ -80,4 +80,10 @@ describe("createServiceClient", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
     expect(() => createServiceClient()).toThrow(/NEXT_PUBLIC_SUPABASE_URL/);
   });
+
+  it("does not need the publishable key", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "");
+    const { error } = await createServiceClient().from("accounts").select();
+    expect(error).toBeNull();
+  });
 });

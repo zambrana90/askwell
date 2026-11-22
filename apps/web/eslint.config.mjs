@@ -18,7 +18,12 @@ const config = [
           message: "SUPABASE_SECRET_KEY may only be read in lib/supabase/service.ts.",
         },
         {
-          selector: `Literal[value='${SECRET}']`,
+          // Template literals, e.g. process.env[`SUPABASE_SECRET_KEY`].
+          selector: `TemplateElement[value.raw=/${SECRET}/]`,
+          message: "SUPABASE_SECRET_KEY may only be referenced in lib/supabase/service.ts.",
+        },
+        {
+          selector: `Literal[value=/${SECRET}/]`,
           message: "SUPABASE_SECRET_KEY may only be referenced in lib/supabase/service.ts.",
         },
         {

@@ -50,3 +50,32 @@ body {
   background: var(--canvas);
   color: var(--ink);
 }
+
+/*
+ * Landing-page motion. CSS only. Off when the visitor asks for reduced motion.
+ * Where scroll-driven animation is supported, sections ease in as they scroll into view;
+ * elsewhere they ease in once on load.
+ */
+@keyframes landing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    animation: landing-rise 0.7s ease-out both;
+  }
+
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation-timeline: view();
+      animation-range: entry 0% entry 35%;
+    }
+  }
+}

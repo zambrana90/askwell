@@ -1,13 +1,15 @@
-import { UserButton } from "@clerk/nextjs";
-import { currentUser } from "@clerk/nextjs/server";
+import { Button } from "../../components/ui/button";
+import { EmptyState } from "../../components/ui/empty-state";
 
-// Placeholder. B2 replaces it.
-export default async function DashboardPage() {
-  const user = await currentUser();
+export default function DashboardPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <p>{user?.primaryEmailAddress?.emailAddress}</p>
-      <UserButton />
-    </main>
+    <>
+      <h1 className="mb-6 text-2xl font-semibold">Projects</h1>
+      <EmptyState
+        title="No projects yet"
+        description="Create a project to add knowledge and a chat widget to your site."
+        action={<Button disabled>Create project</Button>}
+      />
+    </>
   );
 }

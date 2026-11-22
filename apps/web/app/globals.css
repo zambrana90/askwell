@@ -1,1 +1,52 @@
 @import "tailwindcss";
+
+/*
+ * The one set of design tokens (project.md §13). Every page uses these.
+ * Colors are CSS variables so a scope class can switch them:
+ *   .theme-light  dashboard (also the default)
+ *   .theme-dark   landing page
+ * Hex colors live only in this file.
+ */
+:root,
+.theme-light {
+  --canvas: #f4f4f5;
+  --ink: #0a0a0a;
+  --ink-muted: #52525b;
+  --glass: rgb(255 255 255 / 0.65);
+  --glass-edge: rgb(10 10 10 / 0.1);
+  --glass-shadow: 0 8px 32px rgb(0 0 0 / 0.08);
+  --accent: #0a0a0a;
+  --accent-ink: #ffffff;
+}
+
+.theme-dark {
+  --canvas: #050505;
+  --ink: #fafafa;
+  --ink-muted: #a1a1aa;
+  --glass: rgb(255 255 255 / 0.06);
+  --glass-edge: rgb(255 255 255 / 0.14);
+  --glass-shadow: 0 8px 32px rgb(0 0 0 / 0.5);
+  --accent: #fafafa;
+  --accent-ink: #0a0a0a;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-glass: var(--glass);
+  --color-glass-edge: var(--glass-edge);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --shadow-glass: var(--glass-shadow);
+}
+
+@theme {
+  --radius-glass: 1rem;
+  --blur-glass: 16px;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+}

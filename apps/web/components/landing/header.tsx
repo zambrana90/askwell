@@ -1,3 +1,6 @@
+"use client";
+
+// Client component so `Show` resolves after hydration and the landing page stays static.
 import { Show } from "@clerk/nextjs";
 import Link from "next/link";
 import { APP_NAME } from "@askwell/shared";

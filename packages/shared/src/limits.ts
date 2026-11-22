@@ -1,3 +1,4 @@
+/** Maximum length, in characters, of a single visitor message. */
 export const MAX_MESSAGE_LENGTH = 1000;
 export const MAX_KNOWLEDGE_TEXT_LENGTH = 100_000;
 export const MAX_KNOWLEDGE_TITLE_LENGTH = 200;

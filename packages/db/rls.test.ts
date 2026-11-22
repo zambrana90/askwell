@@ -282,6 +282,24 @@ describe("authenticated writes", () => {
     });
   });
 
+  it("rejects a chunk whose project differs from its source's project", async () => {
+    await withRollback(db, async (run) => {
+      await expect(
+        run(
+          service,
+          "insert into public.knowledge_chunks (project_id, source_id, content, embedding) values ($1, $2, 'x', $3)",
+          [PB, SA, vec],
+        ),
+      ).rejects.toThrow(/foreign key/i);
+      // Same project is fine.
+      await run(
+        service,
+        "insert into public.knowledge_chunks (project_id, source_id, content, embedding) values ($1, $2, 'x', $3)",
+        [PA, SA, vec],
+      );
+    });
+  });
+
   it("deleting a source removes its chunks", async () => {
     await withRollback(db, async (run) => {
       await run(service, `delete from public.knowledge_sources where id = '${SA}'`);

@@ -52,16 +52,21 @@ create table public.knowledge_sources (
   type text not null check (type in ('text', 'pdf', 'md', 'txt')),
   storage_key text,
   status text not null check (status in ('uploading', 'processing', 'ready', 'failed')),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Lets knowledge_chunks reference (id, project_id), so a chunk can't point at another project's source.
+  unique (id, project_id)
 );
 create index knowledge_sources_project_id_idx on public.knowledge_sources (project_id);
 
 create table public.knowledge_chunks (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects (id) on delete cascade,
-  source_id uuid not null references public.knowledge_sources (id) on delete cascade,
+  source_id uuid not null,
   content text not null,
-  embedding extensions.vector(1536) not null
+  embedding extensions.vector(1536) not null,
+  -- The chunk's project must be the source's project.
+  foreign key (source_id, project_id)
+    references public.knowledge_sources (id, project_id) on delete cascade
 );
 create index knowledge_chunks_project_id_idx on public.knowledge_chunks (project_id);
 create index knowledge_chunks_source_id_idx on public.knowledge_chunks (source_id);

@@ -1,6 +1,7 @@
 "use client";
 
 // Client component so `Show` resolves after hydration and the landing page stays static.
+// The nav reserves its size so the header doesn't jump while Clerk loads.
 import { Show } from "@clerk/nextjs";
 import Link from "next/link";
 import { APP_NAME } from "@askwell/shared";
@@ -12,7 +13,7 @@ export function LandingHeader() {
       <Link href="/" className="font-semibold">
         {APP_NAME}
       </Link>
-      <nav aria-label="Account">
+      <nav aria-label="Account" className="flex min-h-10 min-w-24 justify-end">
         <Show when="signed-out">
           <LinkButton href="/sign-in" variant="ghost">
             Sign in

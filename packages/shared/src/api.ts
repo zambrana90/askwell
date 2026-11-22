@@ -126,8 +126,10 @@ export type PasteKnowledgeResponse = { source: KnowledgeSource };
 
 // ---------- POST /api/projects/:id/knowledge/upload-url ----------
 
-const fileExtension = (name: string): string =>
-  name.slice(name.lastIndexOf(".") + 1).toLowerCase();
+const fileExtension = (name: string): string => {
+  const dot = name.lastIndexOf(".");
+  return dot === -1 ? "" : name.slice(dot + 1).toLowerCase();
+};
 
 export const uploadUrlRequestSchema = z
   .object({

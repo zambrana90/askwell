@@ -127,6 +127,14 @@ describe("schemas", () => {
     expect(ok(uploadUrlRequestSchema.safeParse({ ...valid, size: 0 }))).toBe(false);
     expect(ok(uploadUrlRequestSchema.safeParse({ ...valid, mime: "image/png" }))).toBe(false);
     expect(ok(uploadUrlRequestSchema.safeParse({ ...valid, fileName: "guide.exe" }))).toBe(false);
+    expect(ok(uploadUrlRequestSchema.safeParse({ ...valid, fileName: "GUIDE.PDF" }))).toBe(true);
+    for (const [fileName, mime] of [
+      ["pdf", "application/pdf"],
+      ["md", "text/markdown"],
+      ["txt", "text/plain"],
+    ] as const) {
+      expect(ok(uploadUrlRequestSchema.safeParse({ size: 1, fileName, mime }))).toBe(false);
+    }
     expect(ok(uploadUrlRequestSchema.safeParse({ ...valid, fileName: "guide.txt" }))).toBe(false);
   });
 

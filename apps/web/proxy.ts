@@ -1,3 +1,4 @@
+// Clerk proxy: protects the dashboard and owner API routes (see lib/auth/routes.ts).
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import { isProtectedApi, isProtectedPage } from "./lib/auth/routes";
 import { unauthorizedResponse } from "./lib/auth/unauthorized";

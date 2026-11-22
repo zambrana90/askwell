@@ -6,6 +6,7 @@ import { createServiceClient } from "./supabase/service";
  * Owners can't INSERT under RLS, so this uses the service client. The caller must pass
  * the user ID from Clerk's server-side `auth()`, never a value from the client.
  * An existing row is never changed: a Pro user signing in again stays Pro.
+ * Throws if the database call fails; the dashboard layout turns that into the error state.
  */
 export async function ensureAccount(clerkUserId: string): Promise<void> {
   const { error } = await createServiceClient()

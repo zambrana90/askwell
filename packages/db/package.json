@@ -9,5 +9,12 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "build": "echo \"@askwell/db is consumed from source\""
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.5.17",
+    "@electric-sql/pglite-pgvector": "0.0.18"
+  },
+  "devDependencies": {
+    "@askwell/shared": "workspace:*"
   }
 }

@@ -66,13 +66,49 @@ describe("parseEmbedMessage", () => {
   });
 
   test("does not throw on hostile objects", () => {
-    const hostile = {
+    const throwing = {
       get type(): string {
-        return "askwell:close";
+        throw new Error("bad");
       },
     };
-    expect(() => parseEmbedMessage(hostile)).not.toThrow();
-    expect(parseEmbedMessage(Object.create(null))).toBeNull();
+    const throwingProxy = new Proxy(
+      {},
+      {
+        ownKeys() {
+          throw new Error("bad");
+        },
+      },
+    );
+    for (const parse of [parseEmbedMessage, parsePanelMessage, parseLoaderMessage]) {
+      expect(parse(throwing)).toBeNull();
+      expect(parse(throwingProxy)).toBeNull();
+      expect(parse(Object.create(null))).toBeNull();
+    }
+  });
+
+  test("ignores inherited fields: only own keys count", () => {
+    const inherited = Object.assign(Object.create({ type: "askwell:close" }), {
+      extra: 1,
+    });
+    expect(parseEmbedMessage(inherited)).toBeNull();
+    const protoType = Object.create({ type: "askwell:close" });
+    expect(parseEmbedMessage(protoType)).toBeNull();
+  });
+
+  test("returns the validated value, not a second getter read", () => {
+    let reads = 0;
+    const flipping = {
+      type: "askwell:visibility",
+      get open(): unknown {
+        reads += 1;
+        return reads === 1 ? true : "yes";
+      },
+    };
+    expect(parseEmbedMessage(flipping)).toEqual({
+      type: "askwell:visibility",
+      open: true,
+    });
+    expect(reads).toBe(1);
   });
 });
 

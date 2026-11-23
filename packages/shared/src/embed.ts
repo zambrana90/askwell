@@ -37,23 +37,34 @@ export type PanelToLoaderMessage =
 export type LoaderToPanelMessage = EmbedVisibilityMessage;
 export type EmbedMessage = PanelToLoaderMessage | LoaderToPanelMessage;
 
-function asRecord(data: unknown): Record<string, unknown> | null {
-  if (typeof data !== "object" || data === null || Array.isArray(data)) {
+/**
+ * Copy an untrusted value's own enumerable properties once, into a plain
+ * object with no prototype. Getters run once, inherited fields are ignored,
+ * and anything that throws while being inspected (getters, proxies) gives null.
+ * Every guard below validates and returns values from this copy only.
+ */
+function snapshot(data: unknown): Record<string, unknown> | null {
+  try {
+    if (typeof data !== "object" || data === null || Array.isArray(data)) {
+      return null;
+    }
+    const copy: Record<string, unknown> = Object.create(null);
+    for (const key of Object.keys(data)) {
+      copy[key] = (data as Record<string, unknown>)[key];
+    }
+    return copy;
+  } catch {
     return null;
   }
-  return data as Record<string, unknown>;
 }
 
-/** True when the object has exactly these keys: no more, no fewer. */
+/** True when the snapshot has exactly these own keys: no more, no fewer. */
 function hasExactKeys(obj: Record<string, unknown>, keys: string[]): boolean {
   const own = Object.keys(obj);
-  return own.length === keys.length && keys.every((k) => k in obj);
+  return own.length === keys.length && keys.every((k) => own.includes(k));
 }
 
-/** Parse a message sent by the panel. Returns null for anything else. Never throws. */
-export function parsePanelMessage(data: unknown): PanelToLoaderMessage | null {
-  const obj = asRecord(data);
-  if (!obj) return null;
+function panelFrom(obj: Record<string, unknown>): PanelToLoaderMessage | null {
   switch (obj.type) {
     case EMBED_MESSAGE_TYPES.close:
       return hasExactKeys(obj, ["type"]) ? { type: "askwell:close" } : null;
@@ -78,18 +89,30 @@ export function parsePanelMessage(data: unknown): PanelToLoaderMessage | null {
   }
 }
 
+function loaderFrom(obj: Record<string, unknown>): LoaderToPanelMessage | null {
+  if (obj.type !== EMBED_MESSAGE_TYPES.visibility) return null;
+  if (!hasExactKeys(obj, ["type", "open"])) return null;
+  const { open } = obj;
+  if (typeof open !== "boolean") return null;
+  return { type: "askwell:visibility", open };
+}
+
+/** Parse a message sent by the panel. Returns null for anything else. Never throws. */
+export function parsePanelMessage(data: unknown): PanelToLoaderMessage | null {
+  const obj = snapshot(data);
+  return obj ? panelFrom(obj) : null;
+}
+
 /** Parse a message sent by the loader. Returns null for anything else. Never throws. */
 export function parseLoaderMessage(data: unknown): LoaderToPanelMessage | null {
-  const obj = asRecord(data);
-  if (!obj || obj.type !== EMBED_MESSAGE_TYPES.visibility) return null;
-  if (!hasExactKeys(obj, ["type", "open"])) return null;
-  if (typeof obj.open !== "boolean") return null;
-  return { type: "askwell:visibility", open: obj.open };
+  const obj = snapshot(data);
+  return obj ? loaderFrom(obj) : null;
 }
 
 /** Parse any embed message. Returns the typed message or null. Never throws. */
 export function parseEmbedMessage(data: unknown): EmbedMessage | null {
-  return parsePanelMessage(data) ?? parseLoaderMessage(data);
+  const obj = snapshot(data);
+  return obj ? (panelFrom(obj) ?? loaderFrom(obj)) : null;
 }
 
 /**

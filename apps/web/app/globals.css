@@ -3,8 +3,10 @@
 /*
  * The one set of design tokens (project.md §13). Every page uses these.
  * Colors are CSS variables so a scope class can switch them:
- *   .theme-light  dashboard (also the default)
- *   .theme-dark   landing page
+ *   .theme-light  light (also the default)
+ *   .theme-dark   dark (landing page)
+ *   .theme-auto   follows the system setting; <html data-theme="light|dark"> overrides it
+ *                 (dashboard, and the widget panel in Phase 2)
  * Hex colors live only in this file.
  */
 :root,
@@ -19,7 +21,8 @@
   --accent-ink: #ffffff;
 }
 
-.theme-dark {
+.theme-dark,
+html[data-theme="dark"] .theme-auto {
   --canvas: #050505;
   --ink: #fafafa;
   --ink-muted: #a1a1aa;
@@ -28,6 +31,19 @@
   --glass-shadow: 0 8px 32px rgb(0 0 0 / 0.5);
   --accent: #fafafa;
   --accent-ink: #0a0a0a;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .theme-auto {
+    --canvas: #050505;
+    --ink: #fafafa;
+    --ink-muted: #a1a1aa;
+    --glass: rgb(255 255 255 / 0.06);
+    --glass-edge: rgb(255 255 255 / 0.14);
+    --glass-shadow: 0 8px 32px rgb(0 0 0 / 0.5);
+    --accent: #fafafa;
+    --accent-ink: #0a0a0a;
+  }
 }
 
 @theme inline {

@@ -10,9 +10,10 @@ type DashboardNavProps = {
   appName: string;
   items: readonly NavItem[];
   userMenu: ReactNode;
+  themeToggle?: ReactNode;
 };
 
-export function DashboardNav({ appName, items, userMenu }: DashboardNavProps) {
+export function DashboardNav({ appName, items, userMenu, themeToggle }: DashboardNavProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -39,6 +40,7 @@ export function DashboardNav({ appName, items, userMenu }: DashboardNavProps) {
           {links("")}
         </nav>
         <div className="ml-auto flex items-center gap-3 md:ml-0">
+          {themeToggle}
           {userMenu}
           <button
             type="button"

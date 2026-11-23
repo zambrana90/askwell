@@ -14,7 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       signUpFallbackRedirectUrl="/dashboard"
       afterSignOutUrl="/sign-in"
     >
-      <html lang="en">
+      <html lang="en" suppressHydrationWarning>
         <body>{children}</body>
       </html>
     </ClerkProvider>

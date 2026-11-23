@@ -214,6 +214,27 @@ describe("postMessage", () => {
     for (const call of parentPost.mock.calls) expect(call[1]).toBe(HOST);
   });
 
+  test("Escape inside the panel posts close to the host origin", () => {
+    render(panel());
+    fireEvent.keyDown(screen.getByLabelText("Your message"), { key: "Escape" });
+    expect(parentPost).toHaveBeenCalledWith({ type: "askwell:close" }, HOST);
+    parentPost.mockClear();
+    fireEvent.keyDown(screen.getByLabelText("Your message"), { key: "a" });
+    expect(parentPost).not.toHaveBeenCalledWith({ type: "askwell:close" }, HOST);
+  });
+
+  test("Escape that cancels an IME composition does not close", () => {
+    render(panel());
+    fireEvent.keyDown(screen.getByLabelText("Your message"), { key: "Escape", isComposing: true });
+    expect(parentPost).not.toHaveBeenCalledWith({ type: "askwell:close" }, HOST);
+  });
+
+  test("Escape with no valid origin posts nothing", () => {
+    render(panel(null));
+    fireEvent.keyDown(screen.getByLabelText("Your message"), { key: "Escape" });
+    expect(parentPost).not.toHaveBeenCalled();
+  });
+
   test("with no valid origin nothing is posted", () => {
     render(panel(null));
     fireEvent.click(screen.getByRole("button", { name: "Close chat" }));

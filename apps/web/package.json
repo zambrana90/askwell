@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build:widget": "pnpm -C ../widget build && node -e \"const f=require('node:fs');f.mkdirSync('public',{recursive:true});f.copyFileSync('../widget/dist/widget.js','public/widget.js')\"",
+    "predev": "pnpm build:widget",
+    "prebuild": "pnpm build:widget",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

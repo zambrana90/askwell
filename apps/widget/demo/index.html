@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Widget demo</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 3rem auto; padding: 0 1rem; line-height: 1.5; }
+      code, pre { background: #f2f2f2; padding: 0.1rem 0.3rem; border-radius: 4px; }
+      pre { padding: 0.75rem; overflow-x: auto; }
+    </style>
+  </head>
+  <body>
+    <h1>Widget demo</h1>
+    <p>This page stands in for a customer's site. The chat button should appear in a corner.</p>
+
+    <h2>Try it</h2>
+    <ol>
+      <li>Edit the snippet at the bottom of this file: set <code>src</code> to your app URL + <code>/widget.js</code> and <code>data-key</code> to a dev <code>pk_…</code> key.</li>
+      <li>Serve this folder from a different origin than the app: <code>python3 -m http.server 8080</code> (run it in <code>apps/widget/demo</code>), then open <code>http://localhost:8080</code>.</li>
+      <li>Click the button. The panel opens; send a message and you get a mock reply. Close it with the ✕ or Escape.</li>
+    </ol>
+
+    <h2>Protected Vercel preview</h2>
+    <p>
+      Previews are behind Vercel's login. Load this page once with
+      <code>http://localhost:8080/?x-vercel-protection-bypass=&lt;secret&gt;&amp;x-vercel-set-bypass-cookie=samesitenone</code>
+      so the iframe gets the bypass cookie across sites. Never commit the secret.
+    </p>
+
+    <h2>The snippet</h2>
+    <pre>&lt;script src="https://YOUR-APP.vercel.app/widget.js" data-key="pk_YOUR_KEY" async&gt;&lt;/script&gt;</pre>
+
+    <!-- Replace both values below. -->
+    <script src="https://YOUR-APP.vercel.app/widget.js" data-key="pk_YOUR_KEY" async></script>
+  </body>
+</html>

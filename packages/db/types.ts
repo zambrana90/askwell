@@ -251,6 +251,35 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_project: {
+        Args: {
+          p_animation: string
+          p_button_color: string
+          p_header_text: string
+          p_label: string
+          p_max_projects: number
+          p_name: string
+          p_owner_id: string
+          p_position: string
+          p_public_key: string
+          p_show_badge: boolean
+        }
+        Returns: {
+          created_at: string
+          id: string
+          messages_used: number
+          name: string
+          owner_id: string
+          period_start: string
+          public_key: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "projects"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       owned_conversation_ids: { Args: never; Returns: string[] }
       owned_project_ids: { Args: never; Returns: string[] }
     }

@@ -124,6 +124,9 @@ describe("rendering", () => {
     expect(inkFor("#000000")).toBe("#ffffff");
     expect(inkFor("#ffffff")).toBe("#000000");
     expect(inkFor("#fff")).toBe("#000000");
+    expect(inkFor("#ff0000")).toBe("#000000"); // black 5.25:1 beats white 4.00:1
+    expect(inkFor("#0000ff")).toBe("#ffffff");
+    expect(inkFor("#777777")).toBe("#000000");
   });
 
   test("parseConfig rejects bad values", () => {

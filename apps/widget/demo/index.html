@@ -16,16 +16,22 @@
 
     <h2>Try it</h2>
     <ol>
-      <li>Edit the snippet at the bottom of this file: set <code>src</code> to your app URL + <code>/widget.js</code> and <code>data-key</code> to a dev <code>pk_…</code> key.</li>
+      <li>Edit the snippet at the bottom of this file: set <code>src</code> to your app URL + <code>/widget.js</code> (for example <code>http://localhost:3000/widget.js</code>) and <code>data-key</code> to a dev <code>pk_…</code> key.</li>
       <li>Serve this folder from a different origin than the app: <code>python3 -m http.server 8080</code> (run it in <code>apps/widget/demo</code>), then open <code>http://localhost:8080</code>.</li>
       <li>Click the button. The panel opens; send a message and you get a mock reply. Close it with the ✕ or Escape.</li>
     </ol>
 
-    <h2>Protected Vercel preview</h2>
+    <h2>Which app to point at</h2>
     <p>
-      Previews are behind Vercel's login. Load this page once with
-      <code>http://localhost:8080/?x-vercel-protection-bypass=&lt;secret&gt;&amp;x-vercel-set-bypass-cookie=samesitenone</code>
-      so the iframe gets the bypass cookie across sites. Never commit the secret.
+      Use the app running locally (<code>pnpm dev</code>, then <code>http://localhost:3000</code>) or an unprotected deployment.
+      This page is on another origin than the app, which is the point of the demo.
+    </p>
+    <p>
+      <strong>Protected Vercel previews do not work from this page.</strong> The widget loads its config with a cross-origin
+      <code>fetch</code> that sends no cookies, and Deployment Protection blocks every request without authentication,
+      so the config fetch fails and nothing renders. Visiting the preview first with
+      <code>?x-vercel-protection-bypass=&lt;secret&gt;&amp;x-vercel-set-bypass-cookie=samesitenone</code> sets a cookie
+      that only the iframe can use, not the fetch. Never commit the secret.
     </p>
 
     <h2>The snippet</h2>

@@ -223,6 +223,12 @@ describe("postMessage", () => {
     expect(parentPost).not.toHaveBeenCalledWith({ type: "askwell:close" }, HOST);
   });
 
+  test("Escape that cancels an IME composition does not close", () => {
+    render(panel());
+    fireEvent.keyDown(screen.getByLabelText("Your message"), { key: "Escape", isComposing: true });
+    expect(parentPost).not.toHaveBeenCalledWith({ type: "askwell:close" }, HOST);
+  });
+
   test("Escape with no valid origin posts nothing", () => {
     render(panel(null));
     fireEvent.keyDown(screen.getByLabelText("Your message"), { key: "Escape" });

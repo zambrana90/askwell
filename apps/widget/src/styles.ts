@@ -9,15 +9,15 @@ export const STYLES = `
 .badge{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#e11d48;color:#fff;font:700 12px/20px system-ui,sans-serif;text-align:center}
 .badge[hidden]{display:none}
 .panel{position:fixed;z-index:2147483647;width:min(380px,calc(100vw - 40px));height:var(--h);max-height:calc(100vh - 104px);border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgb(0 0 0/.3);opacity:0;visibility:hidden;transition:opacity .2s,transform .2s,visibility 0s .2s}
-[data-open] .panel{opacity:1;visibility:visible;transform:none;transition-delay:0s}
+[data-open] .panel{opacity:1;visibility:visible;transition-delay:0s}
 iframe{display:block;width:100%;height:100%;border:0}
 [data-pos$=right] .btn,[data-pos$=right] .panel{right:20px}
 [data-pos$=left] .btn,[data-pos$=left] .panel{left:20px}
 [data-pos^=bottom] .btn{bottom:20px}[data-pos^=bottom] .panel{bottom:84px}
 [data-pos^=top] .btn{top:20px}[data-pos^=top] .panel{top:84px}
-[data-anim=slide][data-pos^=bottom] .panel{transform:translateY(16px)}
-[data-anim=slide][data-pos^=top] .panel{transform:translateY(-16px)}
-[data-anim=scale] .panel{transform:scale(.9)}
+[data-anim=slide][data-pos^=bottom]:not([data-open]) .panel{transform:translateY(16px)}
+[data-anim=slide][data-pos^=top]:not([data-open]) .panel{transform:translateY(-16px)}
+[data-anim=scale]:not([data-open]) .panel{transform:scale(.9)}
 [data-anim=scale][data-pos=bottom-right] .panel{transform-origin:bottom right}
 [data-anim=scale][data-pos=bottom-left] .panel{transform-origin:bottom left}
 [data-anim=scale][data-pos=top-right] .panel{transform-origin:top right}

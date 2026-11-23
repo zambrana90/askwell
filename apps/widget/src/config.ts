@@ -35,10 +35,19 @@ export function parseConfig(data: unknown): WidgetConfig | null {
   };
 }
 
-/** Black or white text, whichever reads better on the button color. */
-export function inkFor(hex: string): string {
+function luminance(hex: string): number {
   let h = hex.slice(1);
   if (h.length === 3) h = [...h].map((c) => c + c).join("");
-  const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
-  return 0.299 * r! + 0.587 * g! + 0.114 * b! > 150 ? "#000000" : "#ffffff";
+  const [r, g, b] = [0, 2, 4].map((i) => {
+    const c = parseInt(h.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+}
+
+/** Black or white text, whichever has the higher WCAG contrast ratio on the button color. */
+export function inkFor(hex: string): string {
+  const l = luminance(hex);
+  // Contrast with white is 1.05 / (l + 0.05); with black it is (l + 0.05) / 0.05.
+  return 1.05 / (l + 0.05) > (l + 0.05) / 0.05 ? "#ffffff" : "#000000";
 }

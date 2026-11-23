@@ -23,15 +23,23 @@
 
     <h2>Which app to point at</h2>
     <p>
-      Use the app running locally (<code>pnpm dev</code>, then <code>http://localhost:3000</code>) or an unprotected deployment.
-      This page is on another origin than the app, which is the point of the demo.
+      Easiest: the app running locally (<code>pnpm dev</code>, then <code>http://localhost:3000</code>). This page is on another
+      origin than the app, which is the point of the demo.
     </p>
+
+    <h2>A protected Vercel preview</h2>
     <p>
-      <strong>Protected Vercel previews do not work from this page.</strong> The widget loads its config with a cross-origin
-      <code>fetch</code> that sends no cookies, and Deployment Protection blocks every request without authentication,
-      so the config fetch fails and nothing renders. Visiting the preview first with
-      <code>?x-vercel-protection-bypass=&lt;secret&gt;&amp;x-vercel-set-bypass-cookie=samesitenone</code> sets a cookie
-      that only the iframe can use, not the fetch. Never commit the secret.
+      Deployment Protection needs authentication on <em>every</em> request, and the widget's config
+      <code>fetch</code> sends no cookies. So a bypass cookie (even <code>samesitenone</code>) is not enough: the fetch fails
+      and nothing renders. Use a browser that adds the header <code>x-vercel-protection-bypass: &lt;secret&gt;</code> to
+      requests <strong>for the preview host</strong> at the network level, for example Playwright:
+    </p>
+    <pre>await context.route("https://YOUR-PREVIEW.vercel.app/**", (route) =&gt;
+  route.continue({ headers: { ...route.request().headers(), "x-vercel-protection-bypass": process.env.VERCEL_AUTOMATION_BYPASS_SECRET } }));</pre>
+    <p>
+      Added this way, the header does not trigger a CORS preflight. Do not use <code>extraHTTPHeaders</code> for it: that sends
+      the header to every host (such as Clerk's) and their CORS checks reject it. Read the secret from the environment;
+      never write it into this file or commit it.
     </p>
 
     <h2>The snippet</h2>

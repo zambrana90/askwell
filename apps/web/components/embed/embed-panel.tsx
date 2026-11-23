@@ -32,6 +32,7 @@ export function EmbedPanel({ publicKey, config, hostOrigin }: Props) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // The loader tells us when the panel is shown or hidden. Shown: reset the
   // unread count and focus the input.
@@ -54,9 +55,12 @@ export function EmbedPanel({ publicKey, config, hostOrigin }: Props) {
   useEffect(() => {
     const root = rootRef.current;
     const list = listRef.current;
-    if (!root || !list) return;
+    const content = contentRef.current;
+    if (!root || !list || !content) return;
+    // Header + input + badge, plus the messages' own height (not the list's, which
+    // fills the iframe and would only echo the current height back).
     const chrome = root.offsetHeight - list.clientHeight;
-    const wanted = Math.round(chrome + list.scrollHeight);
+    const wanted = Math.round(chrome + content.offsetHeight);
     const height = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, wanted));
     postToHost({ type: "askwell:resize", height }, hostOrigin);
   }, [messages, typing, error, hostOrigin]);
@@ -121,10 +125,11 @@ export function EmbedPanel({ publicKey, config, hostOrigin }: Props) {
         role="log"
         aria-live="polite"
         aria-label="Conversation"
-        className="flex flex-1 flex-col gap-2 overflow-y-auto px-4 py-4"
+        className="flex-1 overflow-y-auto"
       >
+        <div ref={contentRef} className="flex flex-col gap-2 px-4 py-4">
         {messages.length === 0 ? (
-          <p className="m-auto text-center text-sm text-ink-muted">Ask a question to get started.</p>
+          <p className="py-8 text-center text-sm text-ink-muted">Ask a question to get started.</p>
         ) : null}
         {messages.map((message) => (
           <p
@@ -155,6 +160,7 @@ export function EmbedPanel({ publicKey, config, hostOrigin }: Props) {
             {error}
           </p>
         ) : null}
+        </div>
       </div>
 
       <form onSubmit={onSubmit} className="flex items-end gap-2 border-t border-glass-edge bg-glass px-3 py-3 backdrop-blur-glass">

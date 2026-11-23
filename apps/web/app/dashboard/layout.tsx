@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 import { APP_NAME } from "@askwell/shared";
+import { AppClerkProvider } from "../../components/auth/app-clerk-provider";
 import { DashboardNav } from "../../components/dashboard/nav";
 import { ThemeToggle } from "../../components/dashboard/theme-toggle";
 import { ErrorState } from "../../components/ui/error-state";
@@ -23,18 +24,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="theme-auto min-h-screen bg-canvas text-ink">
-      <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
-      {accountReady ? (
-        <>
-          <DashboardNav appName={APP_NAME} items={NAV_ITEMS} userMenu={<UserButton />} themeToggle={<ThemeToggle />} />
-          <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
-        </>
-      ) : (
-        <main className="mx-auto max-w-5xl px-4 py-8">
-          <ErrorState description="We couldn't load your account. Please reload the page." />
-        </main>
-      )}
-    </div>
+    <AppClerkProvider>
+      <div className="theme-auto min-h-screen bg-canvas text-ink">
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        {accountReady ? (
+          <>
+            <DashboardNav appName={APP_NAME} items={NAV_ITEMS} userMenu={<UserButton />} themeToggle={<ThemeToggle />} />
+            <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
+          </>
+        ) : (
+          <main className="mx-auto max-w-5xl px-4 py-8">
+            <ErrorState description="We couldn't load your account. Please reload the page." />
+          </main>
+        )}
+      </div>
+    </AppClerkProvider>
   );
 }

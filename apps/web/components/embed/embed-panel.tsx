@@ -107,7 +107,14 @@ export function EmbedPanel({ publicKey, config, hostOrigin }: Props) {
   }
 
   return (
-    <div ref={rootRef} className="theme-auto flex h-dvh flex-col bg-canvas text-ink">
+    <div
+      ref={rootRef}
+      className="theme-auto flex h-dvh flex-col bg-canvas text-ink"
+      // Keys pressed inside the iframe never reach the host page, so Escape asks the loader to close.
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && !event.nativeEvent.isComposing) postToHost({ type: "askwell:close" }, hostOrigin);
+      }}
+    >
       <header className="flex items-center justify-between gap-2 border-b border-glass-edge bg-glass px-4 py-3 backdrop-blur-glass">
         <h1 className="truncate text-base font-semibold">{config.headerText}</h1>
         <Button

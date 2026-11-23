@@ -15,3 +15,6 @@ next-env.d.ts
 .agents/
 .claude/
 .jsmhq-role.md
+
+# widget.js is built from apps/widget and copied here by apps/web prebuild/predev
+apps/web/public/widget.js

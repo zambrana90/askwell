@@ -240,7 +240,8 @@ test("dialog: after a delete the opener is gone, so focus goes to the page headi
   fireEvent.click(opener);
   fireEvent.click(screen.getByRole("button", { name: "Delete project" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Projects" }));
+  // Focus is restored in the dialog's passive-effect cleanup, which can run just after the DOM update.
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Projects" })));
 });
 
 test("dialog: Tab and Shift+Tab stay inside the dialog", () => {

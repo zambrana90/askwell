@@ -35,8 +35,10 @@ export async function init(script: HTMLScriptElement): Promise<HTMLElement | nul
 }
 
 function render(appOrigin: string, key: string, config: NonNullable<ReturnType<typeof parseConfig>>): HTMLElement {
-  const host = document.createElement("div");
-  host.style.cssText = "all:initial";
+  // A custom tag name, so host-page rules like `div{display:none!important}` miss it.
+  // The inline !important reset beats author !important rules.
+  const host = document.createElement("askwell-widget");
+  host.style.cssText = "all:initial!important";
   const shadow = host.attachShadow({ mode: "open" });
 
   const style = document.createElement("style");

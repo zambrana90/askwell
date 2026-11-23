@@ -97,6 +97,7 @@ describe("rendering", () => {
     expect(document.querySelector("button")).toBeNull();
     expect(button(host)).toBeTruthy();
     expect(host.shadowRoot!.querySelector("style")).toBeTruthy();
+    expect(host.tagName.toLowerCase()).toBe("askwell-widget");
   });
 
   test("config styles apply: color, label, corner, animation", async () => {

@@ -12,5 +12,9 @@
   },
   "dependencies": {
     "zod": "^4.6.7"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./embed": "./src/embed.ts"
   }
 }

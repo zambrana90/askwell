@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import {
   THEME_CHOICES,
   applyThemeChoice,
@@ -19,6 +19,7 @@ const ICONS: Record<ThemeChoice, string> = {
 
 export function ThemeToggle() {
   const [choice, setChoice] = useState<ThemeChoice>("system");
+  const buttons = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
     // Read the stored choice after mount; the server can't know it. Apply it too:
@@ -35,11 +36,28 @@ export function ThemeToggle() {
     applyThemeChoice(document.documentElement, next);
   }
 
+  // Radio-group keyboard behavior: arrows move focus and selection, wrapping around.
+  function onKeyDown(event: KeyboardEvent, index: number) {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+    if (step === undefined) return;
+    event.preventDefault();
+    const nextIndex = (index + step + THEME_CHOICES.length) % THEME_CHOICES.length;
+    const next = THEME_CHOICES[nextIndex];
+    if (!next) return;
+    select(next);
+    buttons.current[nextIndex]?.focus();
+  }
+
   return (
     <div role="radiogroup" aria-label="Theme" className="inline-flex rounded-glass border border-glass-edge p-0.5">
-      {THEME_CHOICES.map((value) => (
+      {THEME_CHOICES.map((value, index) => (
         <button
           key={value}
+          ref={(el) => {
+            buttons.current[index] = el;
+          }}
+          tabIndex={choice === value ? 0 : -1}
+          onKeyDown={(event) => onKeyDown(event, index)}
           type="button"
           role="radio"
           aria-checked={choice === value}

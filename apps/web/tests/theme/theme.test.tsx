@@ -56,3 +56,20 @@ test("toggle applies the stored choice on mount (client-side navigation)", () =>
   render(<ThemeToggle />);
   expect(document.documentElement.dataset.theme).toBe("dark");
 });
+
+test("toggle is a roving-tabindex radio group with arrow-key navigation", () => {
+  render(<ThemeToggle />);
+  const radio = (name: string) => screen.getByRole("radio", { name });
+  // Only the checked option (System by default) is a tab stop.
+  expect(radio("System").getAttribute("tabindex")).toBe("0");
+  expect(radio("Light").getAttribute("tabindex")).toBe("-1");
+  // Arrow keys move selection and focus, and wrap around.
+  fireEvent.keyDown(radio("System"), { key: "ArrowRight" });
+  expect(radio("Light").getAttribute("aria-checked")).toBe("true");
+  expect(document.activeElement).toBe(radio("Light"));
+  expect(document.documentElement.dataset.theme).toBe("light");
+  fireEvent.keyDown(radio("Light"), { key: "ArrowLeft" });
+  expect(radio("System").getAttribute("aria-checked")).toBe("true");
+  fireEvent.keyDown(radio("System"), { key: "ArrowLeft" });
+  expect(radio("Dark").getAttribute("aria-checked")).toBe("true");
+});

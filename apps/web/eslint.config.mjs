@@ -8,6 +8,8 @@ const config = [
   ...root,
   ...nextVitals,
   ...nextTs,
+  // public/widget.js is the generated copy of apps/widget's bundle (see package.json "build:widget").
+  { ignores: ["public/widget.js"] },
   {
     // The Supabase secret key skips RLS: only lib/supabase/service.ts may read it (project.md §9).
     rules: {

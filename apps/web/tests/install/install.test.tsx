@@ -54,6 +54,14 @@ describe("resolveAppUrl", () => {
     expect(resolveAppUrl("http://127.0.0.1:3000", { host: "x.vercel.app" })).toBe("http://127.0.0.1:3000");
   });
 
+  test("the env value is reduced to its origin: no path, query or fragment", () => {
+    expect(resolveAppUrl("https://askwell.app/?version=1", { host: "x" })).toBe("https://askwell.app");
+    expect(resolveAppUrl("https://askwell.app/app/#top", { host: "x" })).toBe("https://askwell.app");
+    expect(buildInstallSnippet({ appUrl: resolveAppUrl("https://askwell.app/?v=1", { host: "x" })!, publicKey: "pk_1" })).toContain(
+      'src="https://askwell.app/widget.js"',
+    );
+  });
+
   test("keeps valid absolute URLs: https anywhere, http on localhost", () => {
     expect(resolveAppUrl("http://localhost:3000", { host: "x.vercel.app" })).toBe("http://localhost:3000");
     expect(resolveAppUrl(" https://askwell.app ", { host: "x.vercel.app" })).toBe("https://askwell.app");
@@ -74,6 +82,11 @@ describe("resolveAppUrl", () => {
     expect(
       resolveAppUrl(undefined, { host: "internal:3000", forwardedHost: "app.example.com, proxy", forwardedProto: "https, http" }),
     ).toBe("https://app.example.com");
+  });
+
+  test("a non-local host is always https, even when the forwarded proto says http", () => {
+    expect(resolveAppUrl(undefined, { host: "app.example.com", forwardedProto: "http" })).toBe("https://app.example.com");
+    expect(resolveAppUrl(undefined, { host: "10.0.0.5:3000", forwardedProto: "http" })).toBe("https://10.0.0.5:3000");
   });
 
   test("localhost defaults to http, and an explicit proto wins", () => {

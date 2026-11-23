@@ -14,17 +14,18 @@ const LOCAL_PATTERN = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
 const trimSlashes = (url: string) => url.replace(/\/+$/, "");
 
 /**
- * True for an absolute URL with a host: https anywhere, http only for localhost.
- * Not "askwell.app" (no scheme), not ftp:, not javascript:.
+ * The origin of an absolute URL with a host: https anywhere, http only for localhost.
+ * Returns null otherwise ("askwell.app" has no scheme; ftp: and javascript: are refused).
+ * `origin` drops any path, query and fragment, so "/widget.js" can be appended safely.
  */
-function isValidAppUrl(value: string): boolean {
+function parseAppOrigin(value: string): string | null {
   try {
     const url = new URL(value);
-    if (url.hostname === "") return false;
-    if (url.protocol === "https:") return true;
-    return url.protocol === "http:" && LOCAL_PATTERN.test(url.host);
+    if (url.hostname === "") return null;
+    if (url.protocol === "https:") return url.origin;
+    return url.protocol === "http:" && LOCAL_PATTERN.test(url.host) ? url.origin : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -36,13 +37,15 @@ function isValidAppUrl(value: string): boolean {
  */
 export function resolveAppUrl(envUrl: string | undefined, origin: RequestOrigin): string | null {
   const fromEnv = envUrl?.trim();
-  if (fromEnv) return isValidAppUrl(fromEnv) ? trimSlashes(fromEnv) : null;
+  if (fromEnv) return parseAppOrigin(fromEnv);
 
   // Behind a proxy the first forwarded value is the original one.
   const host = (origin.forwardedHost ?? origin.host)?.split(",")[0]?.trim();
   if (!host || !HOST_PATTERN.test(host)) return null;
   const proto = origin.forwardedProto?.split(",")[0]?.trim();
-  const scheme = proto === "http" || proto === "https" ? proto : LOCAL_PATTERN.test(host) ? "http" : "https";
+  // http only for local hosts: a non-local http script is blocked as mixed content on https sites.
+  const local = LOCAL_PATTERN.test(host);
+  const scheme = !local ? "https" : proto === "https" ? "https" : "http";
   return `${scheme}://${host}`;
 }
 

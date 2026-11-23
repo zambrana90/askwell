@@ -5,6 +5,7 @@ import { afterEach, expect, test, vi } from "vitest";
 
 const state = vi.hoisted(() => ({ signedIn: false }));
 vi.mock("@clerk/nextjs", () => ({
+  ClerkProvider: ({ children }: { children: ReactNode }) => children,
   Show: ({ when, children }: { when: "signed-in" | "signed-out"; children: ReactNode }) =>
     (when === "signed-in") === state.signedIn ? children : null,
 }));

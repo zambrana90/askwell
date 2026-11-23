@@ -49,3 +49,10 @@ test("toggle shows the stored choice after a reload", () => {
   render(<ThemeToggle />);
   expect(screen.getByRole("radio", { name: "Dark" }).getAttribute("aria-checked")).toBe("true");
 });
+
+test("toggle applies the stored choice on mount (client-side navigation)", () => {
+  localStorage.setItem(THEME_KEY, "dark");
+  expect(document.documentElement.dataset.theme).toBeUndefined();
+  render(<ThemeToggle />);
+  expect(document.documentElement.dataset.theme).toBe("dark");
+});

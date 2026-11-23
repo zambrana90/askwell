@@ -21,9 +21,12 @@ export function ThemeToggle() {
   const [choice, setChoice] = useState<ThemeChoice>("system");
 
   useEffect(() => {
-    // Read the stored choice after mount; the server can't know it.
+    // Read the stored choice after mount; the server can't know it. Apply it too:
+    // the inline init script doesn't run on a client-side navigation.
+    const stored = readThemeChoice();
+    applyThemeChoice(document.documentElement, stored);
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setChoice(readThemeChoice());
+    setChoice(stored);
   }, []);
 
   function select(next: ThemeChoice) {

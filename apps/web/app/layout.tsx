@@ -1,22 +1,15 @@
 import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
 import { APP_NAME } from "@askwell/shared";
 import "./globals.css";
 
 export const metadata: Metadata = { title: APP_NAME };
 
+// No Clerk here: /embed runs in cross-site iframes and must not load it.
+// Pages that need Clerk wrap themselves in AppClerkProvider (components/auth).
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider
-      signInUrl="/sign-in"
-      signUpUrl="/sign-up"
-      signInFallbackRedirectUrl="/dashboard"
-      signUpFallbackRedirectUrl="/dashboard"
-      afterSignOutUrl="/sign-in"
-    >
-      <html lang="en" suppressHydrationWarning>
-        <body>{children}</body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body>{children}</body>
+    </html>
   );
 }

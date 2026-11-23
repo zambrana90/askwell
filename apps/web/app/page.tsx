@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { APP_NAME } from "@askwell/shared";
+import { AppClerkProvider } from "../components/auth/app-clerk-provider";
 import { Demo } from "../components/landing/demo";
 import { Footer } from "../components/landing/footer";
 import { LandingHeader } from "../components/landing/header";
@@ -15,16 +16,18 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <div className="theme-dark min-h-screen overflow-x-clip bg-canvas text-ink">
-      <LandingHeader />
-      <main>
-        <Hero />
-        <HowItWorks />
-        <Demo />
-        <Pricing />
-        <Install />
-      </main>
-      <Footer />
-    </div>
+    <AppClerkProvider>
+      <div className="theme-dark min-h-screen overflow-x-clip bg-canvas text-ink">
+        <LandingHeader />
+        <main>
+          <Hero />
+          <HowItWorks />
+          <Demo />
+          <Pricing />
+          <Install />
+        </main>
+        <Footer />
+      </div>
+    </AppClerkProvider>
   );
 }

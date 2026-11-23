@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { DEFAULT_WIDGET_CONFIG, MAX_MESSAGE_LENGTH, type WidgetConfig } from "@askwell/shared";
+import { DEFAULT_WIDGET_CONFIG, MAX_MESSAGE_LENGTH, MAX_VISITOR_ID_LENGTH, type WidgetConfig } from "@askwell/shared";
 import { VISITOR_ID_STORAGE_KEY } from "@askwell/shared/embed";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -173,6 +173,27 @@ describe("visitor id", () => {
     const id = getVisitorId();
     expect(id.length).toBeGreaterThan(0);
     expect(getVisitorId()).toBe(id);
+  });
+
+  test("a stored id is kept even if storage fails later", () => {
+    localStorage.setItem(VISITOR_ID_STORAGE_KEY, "stored-id");
+    expect(getVisitorId()).toBe("stored-id");
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    expect(getVisitorId()).toBe("stored-id");
+  });
+
+  test("works without crypto.randomUUID (non-secure context)", () => {
+    vi.stubGlobal("crypto", { getRandomValues: crypto.getRandomValues.bind(crypto) });
+    try {
+      const id = getVisitorId();
+      expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+      expect(localStorage.getItem(VISITOR_ID_STORAGE_KEY)).toBe(id);
+      expect(id.length).toBeLessThanOrEqual(MAX_VISITOR_ID_LENGTH);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   test("the panel sends it with each message", async () => {

@@ -3,8 +3,10 @@ import { UserButton } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 import { APP_NAME } from "@askwell/shared";
 import { DashboardNav } from "../../components/dashboard/nav";
+import { ThemeToggle } from "../../components/dashboard/theme-toggle";
 import { ErrorState } from "../../components/ui/error-state";
 import { ensureAccount } from "../../lib/accounts";
+import { THEME_INIT_SCRIPT } from "../../lib/theme";
 import { NAV_ITEMS } from "./nav-items";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -21,10 +23,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="theme-light min-h-screen bg-canvas text-ink">
+    <div className="theme-auto min-h-screen bg-canvas text-ink">
+      <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       {accountReady ? (
         <>
-          <DashboardNav appName={APP_NAME} items={NAV_ITEMS} userMenu={<UserButton />} />
+          <DashboardNav appName={APP_NAME} items={NAV_ITEMS} userMenu={<UserButton />} themeToggle={<ThemeToggle />} />
           <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
         </>
       ) : (

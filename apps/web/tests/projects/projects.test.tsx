@@ -209,3 +209,48 @@ test("subnav marks the current page; loading announces status", () => {
   render(<Loading />);
   expect(screen.getByRole("status").textContent).toBe("Loading project…");
 });
+
+test("dialog: Escape is ignored while the delete request is in flight", async () => {
+  let finish!: (v: unknown) => void;
+  fetchMock.mockReturnValueOnce(new Promise((r) => (finish = r)));
+  view([p("p1", "Docs bot")]);
+  fireEvent.click(screen.getByRole("button", { name: "Delete Docs bot" }));
+  fireEvent.click(screen.getByRole("button", { name: "Delete project" }));
+  fireEvent.keyDown(document, { key: "Escape" });
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  finish({ ok: true, status: 200, json: async () => ({ ok: true }) });
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+});
+
+test("dialog: focus starts on Cancel and returns to the opener on cancel", () => {
+  view([p("p1", "Docs bot")]);
+  const opener = screen.getByRole("button", { name: "Delete Docs bot" });
+  opener.focus();
+  fireEvent.click(opener);
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "Cancel" }));
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(document.activeElement).toBe(opener);
+});
+
+test("dialog: after a delete the opener is gone, so focus goes to the page heading", async () => {
+  reply(200, { ok: true });
+  view([p("p1", "Docs bot")]);
+  const opener = screen.getByRole("button", { name: "Delete Docs bot" });
+  opener.focus();
+  fireEvent.click(opener);
+  fireEvent.click(screen.getByRole("button", { name: "Delete project" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Projects" }));
+});
+
+test("dialog: Tab and Shift+Tab stay inside the dialog", () => {
+  view([p("p1", "Docs bot")]);
+  fireEvent.click(screen.getByRole("button", { name: "Delete Docs bot" }));
+  const cancel = screen.getByRole("button", { name: "Cancel" });
+  const confirm = screen.getByRole("button", { name: "Delete project" });
+  confirm.focus();
+  fireEvent.keyDown(document, { key: "Tab" });
+  expect(document.activeElement).toBe(cancel);
+  fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+  expect(document.activeElement).toBe(confirm);
+});

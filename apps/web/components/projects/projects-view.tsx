@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import type {
   ApiError,
   CreateProjectResponse,
+  DeleteProjectResponse,
   Project,
   RenameProjectResponse,
 } from "@askwell/shared";
@@ -61,6 +62,7 @@ export function ProjectsView({ initialProjects, maxProjects, messagesPerMonth, l
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const atLimit = projects.length >= maxProjects;
   const showLimit = atLimit || limitHit;
 
@@ -109,7 +111,7 @@ export function ProjectsView({ initialProjects, maxProjects, messagesPerMonth, l
     if (!deleting) return;
     setDeleteBusy(true);
     setDeleteError(null);
-    const res = await call<{ ok: true }>("DELETE", `/api/projects/${deleting.id}`);
+    const res = await call<DeleteProjectResponse>("DELETE", `/api/projects/${deleting.id}`);
     setDeleteBusy(false);
     // A 404 means it is already gone, so the list should drop it too.
     if (res.ok || res.code === "not_found") {
@@ -124,7 +126,9 @@ export function ProjectsView({ initialProjects, maxProjects, messagesPerMonth, l
 
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold">Projects</h1>
+      <h1 ref={headingRef} tabIndex={-1} className="mb-6 text-2xl font-semibold outline-none">
+        Projects
+      </h1>
 
       <Panel className="mb-6 p-4">
         <form onSubmit={onCreate} className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -236,6 +240,7 @@ export function ProjectsView({ initialProjects, maxProjects, messagesPerMonth, l
           error={deleteError}
           onConfirm={onDelete}
           onCancel={() => setDeleting(null)}
+          fallbackFocus={() => headingRef.current}
         />
       ) : null}
     </>

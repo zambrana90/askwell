@@ -48,7 +48,13 @@ describe("resolveAppUrl", () => {
     expect(resolveAppUrl("https://askwell.app/", { host: "other.vercel.app" })).toBe("https://askwell.app");
   });
 
-  test("keeps valid absolute http(s) URLs, including local http", () => {
+  test("http is allowed only for localhost; other http URLs are invalid", () => {
+    expect(resolveAppUrl("http://askwell.app", { host: "x.vercel.app" })).toBeNull();
+    expect(resolveAppUrl("http://192.168.1.5:3000", { host: "x.vercel.app" })).toBeNull();
+    expect(resolveAppUrl("http://127.0.0.1:3000", { host: "x.vercel.app" })).toBe("http://127.0.0.1:3000");
+  });
+
+  test("keeps valid absolute URLs: https anywhere, http on localhost", () => {
     expect(resolveAppUrl("http://localhost:3000", { host: "x.vercel.app" })).toBe("http://localhost:3000");
     expect(resolveAppUrl(" https://askwell.app ", { host: "x.vercel.app" })).toBe("https://askwell.app");
   });

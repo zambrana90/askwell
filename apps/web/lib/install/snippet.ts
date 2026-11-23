@@ -13,11 +13,16 @@ const LOCAL_PATTERN = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
 
 const trimSlashes = (url: string) => url.replace(/\/+$/, "");
 
-/** True for an absolute http(s) URL with a host, e.g. https://askwell.app. Not "askwell.app". */
-function isAbsoluteHttpUrl(value: string): boolean {
+/**
+ * True for an absolute URL with a host: https anywhere, http only for localhost.
+ * Not "askwell.app" (no scheme), not ftp:, not javascript:.
+ */
+function isValidAppUrl(value: string): boolean {
   try {
     const url = new URL(value);
-    return (url.protocol === "https:" || url.protocol === "http:") && url.hostname !== "";
+    if (url.hostname === "") return false;
+    if (url.protocol === "https:") return true;
+    return url.protocol === "http:" && LOCAL_PATTERN.test(url.host);
   } catch {
     return false;
   }
@@ -31,7 +36,7 @@ function isAbsoluteHttpUrl(value: string): boolean {
  */
 export function resolveAppUrl(envUrl: string | undefined, origin: RequestOrigin): string | null {
   const fromEnv = envUrl?.trim();
-  if (fromEnv) return isAbsoluteHttpUrl(fromEnv) ? trimSlashes(fromEnv) : null;
+  if (fromEnv) return isValidAppUrl(fromEnv) ? trimSlashes(fromEnv) : null;
 
   // Behind a proxy the first forwarded value is the original one.
   const host = (origin.forwardedHost ?? origin.host)?.split(",")[0]?.trim();

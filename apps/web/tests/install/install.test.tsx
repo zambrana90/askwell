@@ -48,6 +48,17 @@ describe("resolveAppUrl", () => {
     expect(resolveAppUrl("https://askwell.app/", { host: "other.vercel.app" })).toBe("https://askwell.app");
   });
 
+  test("keeps valid absolute http(s) URLs, including local http", () => {
+    expect(resolveAppUrl("http://localhost:3000", { host: "x.vercel.app" })).toBe("http://localhost:3000");
+    expect(resolveAppUrl(" https://askwell.app ", { host: "x.vercel.app" })).toBe("https://askwell.app");
+  });
+
+  test("a set but invalid env URL is null, not a relative or odd address", () => {
+    for (const bad of ["askwell.app", "//askwell.app", "ftp://askwell.app", "javascript:alert(1)", "https://", "/widget"]) {
+      expect(resolveAppUrl(bad, { host: "x.vercel.app" })).toBeNull();
+    }
+  });
+
   test("falls back to the request's own origin when the env var is unset or blank", () => {
     expect(resolveAppUrl(undefined, { host: "askwell-git-x.vercel.app" })).toBe("https://askwell-git-x.vercel.app");
     expect(resolveAppUrl("  ", { host: "askwell-git-x.vercel.app" })).toBe("https://askwell-git-x.vercel.app");
@@ -167,6 +178,14 @@ describe("InstallPage", () => {
 
   test("an unusable host and no env var shows an error state, not a broken snippet", async () => {
     headerValues.current = { host: "bad host" };
+    loadOwnedProject.mockResolvedValue(project);
+    render(await InstallPage({ params: Promise.resolve({ id: ID }) }));
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(screen.queryByLabelText("Install snippet")).toBeNull();
+  });
+
+  test("a misconfigured NEXT_PUBLIC_APP_URL shows the error state", async () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "askwell.app");
     loadOwnedProject.mockResolvedValue(project);
     render(await InstallPage({ params: Promise.resolve({ id: ID }) }));
     expect(screen.getByRole("alert")).toBeTruthy();

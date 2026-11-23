@@ -13,14 +13,25 @@ const LOCAL_PATTERN = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
 
 const trimSlashes = (url: string) => url.replace(/\/+$/, "");
 
+/** True for an absolute http(s) URL with a host, e.g. https://askwell.app. Not "askwell.app". */
+function isAbsoluteHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (url.protocol === "https:" || url.protocol === "http:") && url.hostname !== "";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * The URL the widget script is served from: `NEXT_PUBLIC_APP_URL` if set, else the
  * request's own origin, so every Vercel preview gives a snippet that works on that preview.
- * Returns null when neither gives a usable value.
+ * Returns null when neither gives a usable value. A set but invalid `NEXT_PUBLIC_APP_URL`
+ * (e.g. "askwell.app" with no scheme) is a misconfiguration: null, not a silent fallback.
  */
 export function resolveAppUrl(envUrl: string | undefined, origin: RequestOrigin): string | null {
   const fromEnv = envUrl?.trim();
-  if (fromEnv) return trimSlashes(fromEnv);
+  if (fromEnv) return isAbsoluteHttpUrl(fromEnv) ? trimSlashes(fromEnv) : null;
 
   // Behind a proxy the first forwarded value is the original one.
   const host = (origin.forwardedHost ?? origin.host)?.split(",")[0]?.trim();

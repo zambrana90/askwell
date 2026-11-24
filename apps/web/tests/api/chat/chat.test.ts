@@ -3,6 +3,18 @@ import { PLAN_LIMITS } from "@askwell/shared";
 
 vi.mock("server-only", () => ({}));
 
+// after() needs a request scope: collect the tasks and run them on demand.
+const deferred: Array<() => Promise<unknown>> = [];
+vi.mock("next/server", async (original) => ({
+  ...(await original<typeof import("next/server")>()),
+  after: (task: () => Promise<unknown>) => void deferred.push(task),
+}));
+const runDeferred = async () => {
+  for (const task of deferred.splice(0)) await task();
+};
+const captureServer = vi.fn();
+vi.mock("../../../lib/analytics/server", () => ({ captureServer: (...a: unknown[]) => captureServer(...a) }));
+
 const protectChat = vi.fn();
 vi.mock("../../../lib/security/arcjet", () => ({ protectChat: (...a: unknown[]) => protectChat(...a) }));
 const embedQuery = vi.fn();
@@ -38,6 +50,8 @@ const post = (b: unknown) =>
 const rpcNames = () => rpc.mock.calls.map((c) => c[0]);
 
 beforeEach(() => {
+  deferred.length = 0;
+  captureServer.mockReset().mockResolvedValue(undefined);
   for (const k of Object.keys(calls)) delete calls[k];
   protectChat.mockReset().mockResolvedValue("allow");
   embedQuery.mockReset().mockResolvedValue([0.1, 0.2]);
@@ -143,7 +157,9 @@ describe("POST /api/widget/chat", () => {
       p_embedding: JSON.stringify([0.1, 0.2]),
       p_match_count: 5,
     });
-    expect(answerQuestion).toHaveBeenCalledWith({ question: "Hello?", chunks: ["chunk A", "chunk B"], history: [] });
+    expect(answerQuestion).toHaveBeenCalledWith(
+      expect.objectContaining({ question: "Hello?", chunks: ["chunk A", "chunk B"], history: [] }),
+    );
     expect(rpc).toHaveBeenCalledWith("save_chat_turn", {
       p_project_id: "p1",
       p_conversation_id: null,
@@ -206,5 +222,103 @@ describe("POST /api/widget/chat", () => {
     const res = OPTIONS();
     expect(res.status).toBe(204);
     expect(res.headers.get("access-control-allow-methods")).toBe("POST, OPTIONS");
+  });
+});
+
+describe("chat tracking", () => {
+  const events = () => captureServer.mock.calls as Array<[string, string, Record<string, unknown>]>;
+  const named = (name: string) => events().filter((e) => e[1] === name);
+
+  beforeEach(() => {
+    tables.projects = { data: { id: "p1", owner_id: "user_owner", accounts: { plan: "free" } }, error: null };
+    tables.conversations = { data: [{ id: CONV }], error: null };
+    embedQuery.mockImplementation(async (_text: string, onCall: (c: unknown) => void) => {
+      onCall({ kind: "embedding", model: "text-embedding-3-small", latencySeconds: 0.1, inputTokens: 3, isError: false });
+      return [0.1];
+    });
+    answerQuestion.mockImplementation(async ({ onCall }: { onCall: (c: unknown) => void }) => {
+      onCall({ kind: "generation", model: "gpt-5-mini", latencySeconds: 1.5, inputTokens: 100, outputTokens: 20, isError: false });
+      return "SECRET REPLY";
+    });
+  });
+
+  test("traces every OpenAI call for the owner, grouped by conversation, with no text", async () => {
+    await post(body({ message: "SECRET QUESTION" }));
+    expect(captureServer).not.toHaveBeenCalled(); // nothing is sent before the response
+    await runDeferred();
+    const [generation] = named("$ai_generation");
+    expect(generation![0]).toBe("user_owner");
+    expect(generation![2]).toMatchObject({
+      projectId: "p1",
+      $ai_trace_id: CONV,
+      $ai_session_id: CONV,
+      $ai_provider: "openai",
+      $ai_model: "gpt-5-mini",
+      $ai_input_tokens: 100,
+      $ai_output_tokens: 20,
+      $ai_latency: 1.5,
+    });
+    expect(named("$ai_embedding")).toHaveLength(1);
+    const sent = JSON.stringify(events());
+    for (const text of ["SECRET", "chunk A", "$ai_input\"", "$ai_output_choices"]) expect(sent).not.toContain(text);
+  });
+
+  test("a failed model call is still traced, under a generated id for a first message", async () => {
+    answerQuestion.mockImplementation(async ({ onCall }: { onCall: (c: unknown) => void }) => {
+      onCall({ kind: "generation", model: "gpt-5-mini", latencySeconds: 1, isError: true, httpStatus: 500 });
+      throw new Error("boom");
+    });
+    expect((await post(body())).status).toBe(500);
+    await runDeferred();
+    const [generation] = named("$ai_generation");
+    expect(generation![2]).toMatchObject({ $ai_is_error: true, $ai_http_status: 500 });
+    expect(generation![2].$ai_session_id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(named("first_chat")).toHaveLength(0);
+  });
+
+  test.each([
+    ["rate_limited", "rate_limit"],
+    ["injection", "injection"],
+  ])("message_blocked on %s, attributed to the owner", async (verdict, reason) => {
+    protectChat.mockResolvedValue(verdict);
+    await post(body({ message: "SECRET QUESTION" }));
+    await runDeferred();
+    expect(events()).toEqual([["user_owner", "message_blocked", { reason, projectId: "p1" }]]);
+  });
+
+  test("message_blocked for an unknown key uses the fixed widget id", async () => {
+    protectChat.mockResolvedValue("rate_limited");
+    tables.projects = { data: null, error: null };
+    await post(body());
+    await runDeferred();
+    expect(events()).toEqual([["widget", "message_blocked", { reason: "rate_limit", $process_person_profile: false }]]);
+  });
+
+  test("first_chat on the project's first conversation", async () => {
+    await post(body());
+    await runDeferred();
+    expect(named("first_chat")).toEqual([["user_owner", "first_chat", { projectId: "p1" }]]);
+  });
+
+  test("no first_chat when the project already had a conversation", async () => {
+    tables.conversations = { data: [{ id: "22222222-2222-4222-8222-222222222222" }], error: null };
+    await post(body());
+    await runDeferred();
+    expect(named("first_chat")).toHaveLength(0);
+  });
+
+  test("no first_chat on a follow-up message", async () => {
+    tables.conversations = { data: { id: CONV }, error: null };
+    await post(body({ conversationId: CONV }));
+    await runDeferred();
+    expect(named("first_chat")).toHaveLength(0);
+  });
+
+  test("a PostHog failure doesn't change the reply", async () => {
+    captureServer.mockRejectedValue(new Error("posthog down"));
+    const res = await post(body());
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ conversationId: CONV, reply: "SECRET REPLY" });
+    await expect(runDeferred()).resolves.toBeUndefined();
   });
 });

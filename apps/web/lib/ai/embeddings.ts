@@ -1,5 +1,6 @@
 import "server-only";
 import { getOpenAI } from "./client";
+import { tracedCall, type OnAiCall } from "./trace";
 
 export const EMBEDDING_MODEL = "text-embedding-3-small";
 export const EMBEDDING_DIMENSIONS = 1536;
@@ -31,11 +32,15 @@ export function batchTexts(texts: string[]): string[][] {
 }
 
 /** Embeds texts in batches (≤100 inputs, ≤200k characters each). The result order matches the input order. */
-export async function embedTexts(texts: string[]): Promise<number[][]> {
+export async function embedTexts(texts: string[], onCall?: OnAiCall): Promise<number[][]> {
   const openai = getOpenAI();
   const out: number[][] = [];
   for (const batch of batchTexts(texts)) {
-    const res = await openai.embeddings.create({ model: EMBEDDING_MODEL, input: batch });
+    const res = await tracedCall(
+      { kind: "embedding", model: EMBEDDING_MODEL, onCall },
+      () => openai.embeddings.create({ model: EMBEDDING_MODEL, input: batch }),
+      (r) => ({ model: r.model, inputTokens: r.usage?.prompt_tokens }),
+    );
     const sorted = [...res.data].sort((a, b) => a.index - b.index);
     if (sorted.length !== batch.length) {
       throw new Error("Embeddings response length does not match the request");
@@ -45,8 +50,8 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
   return out;
 }
 
-export async function embedQuery(text: string): Promise<number[]> {
-  const [vector] = await embedTexts([text]);
+export async function embedQuery(text: string, onCall?: OnAiCall): Promise<number[]> {
+  const [vector] = await embedTexts([text], onCall);
   if (!vector) throw new Error("No embedding returned");
   return vector;
 }

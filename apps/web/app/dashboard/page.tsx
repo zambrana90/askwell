@@ -27,6 +27,7 @@ export default async function DashboardPage() {
       maxProjects={PLAN_LIMITS[plan].projects}
       messagesPerMonth={PLAN_LIMITS[plan].messagesPerMonth}
       limitMessage={limitMessage(plan)}
+      planName={plan === "pro" ? "Pro" : "Free"}
     />
   );
 }

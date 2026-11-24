@@ -5,24 +5,30 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const captureImmediate = vi.fn();
+const captureExceptionImmediate = vi.fn();
 const constructed: Array<[string, Record<string, unknown>]> = [];
-vi.mock("posthog-node", () => ({
+const posthogMock = () => ({
   PostHog: class {
     constructor(key: string, options: Record<string, unknown>) {
       constructed.push([key, options]);
     }
     captureImmediate = captureImmediate;
+    captureExceptionImmediate = captureExceptionImmediate;
   },
-}));
+});
+
 
 import { GET } from "../../app/api/posthog-config/route";
 
 const env = { ...process.env };
 beforeEach(() => {
+  process.env.NEXT_PUBLIC_POSTHOG_HOST = "https://eu.i.posthog.com";
   captureImmediate.mockReset().mockResolvedValue(undefined);
+  captureExceptionImmediate.mockReset().mockResolvedValue(undefined);
   constructed.length = 0;
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   vi.resetModules();
+  vi.doMock("posthog-node", posthogMock); // re-applied each test: one test swaps it for a throwing client
 });
 afterEach(() => {
   process.env = { ...env };
@@ -39,14 +45,15 @@ describe("GET /api/posthog-config", () => {
     expect((await GET().json()).key).toBe("phc_changed");
   });
 
-  test("defaults the host when only the key is set", async () => {
+  test("500 when only the key is set: no guessed host", async () => {
     process.env.NEXT_PUBLIC_POSTHOG_KEY = "phc_test";
     delete process.env.NEXT_PUBLIC_POSTHOG_HOST;
-    expect((await GET().json()).host).toBe("https://us.i.posthog.com");
+    expect(GET().status).toBe(500);
   });
 
   test("500 with the standard error shape when the key is missing", async () => {
     delete process.env.NEXT_PUBLIC_POSTHOG_KEY;
+    process.env.NEXT_PUBLIC_POSTHOG_HOST = "https://eu.i.posthog.com";
     const res = GET();
     expect(res.status).toBe(500);
     expect((await res.json()).error.code).toBe("internal");
@@ -94,6 +101,49 @@ describe("captureServer", () => {
     }));
     const captureServer = await load();
     await expect(captureServer("user_1", "e")).resolves.toBeUndefined();
+  });
+});
+
+describe("server error tracking", () => {
+  const load = async () => (await import("../../lib/analytics/errors")).captureServerException;
+  const onRequestError = async () => (await import("../../instrumentation")).onRequestError;
+
+  test("sends the error with the route path only", async () => {
+    process.env.NEXT_PUBLIC_POSTHOG_KEY = "phc_test";
+    const captureServerException = await load();
+    const err = new Error("boom");
+    await captureServerException(err, { path: "/api/x", routeType: "route", routePath: "/api/x" });
+    expect(captureExceptionImmediate).toHaveBeenCalledWith(err, {
+      properties: { source: "server", path: "/api/x", route_type: "route", route_path: "/api/x" },
+    });
+  });
+
+  test("wraps a non-Error value", async () => {
+    process.env.NEXT_PUBLIC_POSTHOG_KEY = "phc_test";
+    await (await load())("a string", {});
+    expect(captureExceptionImmediate.mock.calls[0]![0]).toBeInstanceOf(Error);
+  });
+
+  test("never throws, with or without a key", async () => {
+    delete process.env.NEXT_PUBLIC_POSTHOG_KEY;
+    await expect((await load())(new Error("x"), {})).resolves.toBeUndefined();
+    process.env.NEXT_PUBLIC_POSTHOG_KEY = "phc_test";
+    captureExceptionImmediate.mockRejectedValue(new Error("network down"));
+    await expect((await load())(new Error("x"), {})).resolves.toBeUndefined();
+  });
+
+  test("onRequestError reports the path without the query string", async () => {
+    process.env.NEXT_PUBLIC_POSTHOG_KEY = "phc_test";
+    process.env.NEXT_RUNTIME = "nodejs";
+    const handler = await onRequestError();
+    await handler(
+      new Error("boom"),
+      { path: "/api/projects?token=secret", method: "GET", headers: {} },
+      { routerKind: "App Router", routePath: "/api/projects", routeType: "route", renderSource: undefined, revalidateReason: undefined },
+    );
+    const props = captureExceptionImmediate.mock.calls[0]![1].properties;
+    expect(props.path).toBe("/api/projects");
+    expect(JSON.stringify(props)).not.toContain("secret");
   });
 });
 

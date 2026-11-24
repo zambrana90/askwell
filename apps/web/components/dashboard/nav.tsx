@@ -24,7 +24,7 @@ export function DashboardNav({ appName, items, userMenu, themeToggle }: Dashboar
         href={item.href}
         aria-current={pathname === item.href ? "page" : undefined}
         onClick={() => setOpen(false)}
-        className={`rounded-glass px-3 py-2 text-sm text-ink-muted hover:bg-glass-edge hover:text-ink aria-[current=page]:text-ink ${extra}`}
+        className={`inline-flex min-h-10 items-center rounded-glass px-3 py-2 text-sm text-ink-muted hover:bg-glass-edge hover:text-ink aria-[current=page]:text-ink ${extra}`}
       >
         {item.label}
       </Link>
@@ -33,7 +33,7 @@ export function DashboardNav({ appName, items, userMenu, themeToggle }: Dashboar
   return (
     <header className="sticky top-0 z-10 border-b border-glass-edge bg-glass backdrop-blur-glass">
       <div className="mx-auto flex h-14 max-w-5xl items-center gap-4 px-4">
-        <Link href="/dashboard" className="font-semibold">
+        <Link href="/dashboard" className="inline-flex min-h-10 items-center font-semibold">
           {appName}
         </Link>
         <nav aria-label="Main" className="hidden flex-1 items-center gap-1 md:flex">

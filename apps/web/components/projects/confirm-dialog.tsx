@@ -80,12 +80,12 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
-        className="w-full max-w-md bg-canvas p-6"
+        className="max-h-full w-full max-w-md overflow-y-auto bg-canvas p-6"
       >
-        <h2 id={titleId} className="text-lg font-semibold">
+        <h2 id={titleId} className="text-lg font-semibold wrap-anywhere">
           {title}
         </h2>
-        <p id={descId} className="mt-2 text-sm text-ink-muted">
+        <p id={descId} className="mt-2 text-sm text-ink-muted wrap-anywhere">
           {description}
         </p>
         {error ? (

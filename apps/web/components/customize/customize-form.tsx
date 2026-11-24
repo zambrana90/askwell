@@ -32,7 +32,7 @@ export function saveErrorMessage(status: number, code: string | undefined): stri
   return "Something went wrong. Please try again.";
 }
 
-const field = "w-full rounded-glass border border-glass-edge bg-glass px-3 py-2 text-sm disabled:opacity-60";
+const field = "min-h-10 w-full rounded-glass border border-glass-edge bg-glass px-3 py-2 text-sm disabled:opacity-60";
 
 export function CustomizeForm({ projectId, initialConfig, canCustomize, upgradeHref = "/dashboard/billing" }: Props) {
   const [config, setConfig] = useState(initialConfig);
@@ -130,7 +130,7 @@ export function CustomizeForm({ projectId, initialConfig, canCustomize, upgradeH
                 {WIDGET_POSITIONS.map((p) => (
                   <label
                     key={p}
-                    className="flex cursor-pointer items-center gap-2 rounded-glass border border-glass-edge bg-glass px-3 py-2 text-sm has-[:checked]:border-accent has-[:disabled]:cursor-default has-[:disabled]:opacity-60"
+                    className="flex min-h-10 cursor-pointer items-center gap-2 rounded-glass border border-glass-edge bg-glass px-3 py-2 text-sm has-[:checked]:border-accent has-[:disabled]:cursor-default has-[:disabled]:opacity-60"
                   >
                     <input
                       type="radio"
@@ -189,7 +189,7 @@ export function CustomizeForm({ projectId, initialConfig, canCustomize, upgradeH
               />
             </div>
 
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex min-h-10 items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={config.showBadge}

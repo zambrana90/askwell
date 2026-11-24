@@ -42,7 +42,7 @@ export function InstallSnippet({ snippet }: { snippet: string }) {
 
   return (
     <Panel className="p-4">
-      <pre className="overflow-x-auto rounded-glass border border-glass-edge bg-canvas p-3 text-sm">
+      <pre className="whitespace-pre-wrap break-all rounded-glass border border-glass-edge bg-canvas p-3 text-sm">
         <code ref={codeRef} tabIndex={0} aria-label="Install snippet">
           {snippet}
         </code>

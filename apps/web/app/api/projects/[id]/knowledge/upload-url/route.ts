@@ -4,6 +4,7 @@ import type { UploadUrlResponse } from "@askwell/shared";
 import {
   KNOWLEDGE_BUCKET,
   reclaimStaleUploads,
+  removeOrphanFiles,
   removeSource,
   reserveSource,
 } from "../../../../../../lib/knowledge";
@@ -31,6 +32,8 @@ export async function POST(request: Request, context: Context) {
 
     // Abandoned reservations must not hold a slot forever.
     await reclaimStaleUploads(project.id);
+    // Files uploaded with the URL of a source that was deleted meanwhile.
+    await removeOrphanFiles(project.id);
 
     const plan = await getPlan(userId);
     const { fileName } = parsed.data;

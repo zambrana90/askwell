@@ -5,6 +5,7 @@ export {
   SOURCE_COLUMNS,
   STALE_UPLOAD_MS,
   reclaimStaleUploads,
+  removeOrphanFiles,
   removeSource,
   reserveSource,
   toKnowledgeSource,

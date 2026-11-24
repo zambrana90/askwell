@@ -9,6 +9,10 @@ vi.mock("next/navigation", () => ({
     throw new Error("NEXT_NOT_FOUND");
   },
 }));
+const getPlan = vi.fn();
+const authMock = vi.fn();
+vi.mock("@clerk/nextjs/server", () => ({ auth: () => authMock() }));
+vi.mock("../../lib/projects/projects", () => ({ getPlan: (id: string) => getPlan(id) }));
 const loadOwnedProject = vi.fn();
 vi.mock("../../components/projects/owned-project", () => ({
   loadOwnedProject: (id: string) => loadOwnedProject(id),
@@ -48,11 +52,16 @@ function view(projects: Project[], maxProjects = 5) {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-24T12:00:00Z"));
+  authMock.mockResolvedValue({ userId: "u1" });
+  getPlan.mockReset().mockResolvedValue("free");
   fetchMock.mockReset();
   loadOwnedProject.mockReset();
   vi.stubGlobal("fetch", fetchMock);
 });
 afterEach(() => {
+  vi.useRealTimers();
   cleanup();
   vi.unstubAllGlobals();
 });
@@ -188,6 +197,47 @@ test("project page shows the public key", async () => {
   loadOwnedProject.mockResolvedValue(p(ID, "Docs bot"));
   render(await ProjectPage({ params: Promise.resolve({ id: ID }) }));
   expect(screen.getByText(`pk_${ID}`)).toBeTruthy();
+});
+
+test("projects list: a count from a previous month shows as 0", () => {
+  view([{ ...p("p1", "Old"), messagesUsed: 90, periodStart: "2026-10-01T00:00:00+00:00" }]);
+  expect(screen.getByText(/0 of 2000 messages this month/)).toBeTruthy();
+});
+
+test("overview: shows N of M with a bar, no limit note under the limit", async () => {
+  loadOwnedProject.mockResolvedValue(p(ID, "Docs bot"));
+  render(await ProjectPage({ params: Promise.resolve({ id: ID }) }));
+  expect(screen.getByText("7 of 100")).toBeTruthy();
+  const bar = screen.getByRole("progressbar", { name: "Messages this month" });
+  expect(bar.getAttribute("aria-valuenow")).toBe("7");
+  expect(bar.getAttribute("aria-valuemax")).toBe("100");
+  expect(screen.queryByText(/chat unavailable/)).toBeNull();
+  expect(getPlan).toHaveBeenCalledWith("u1");
+});
+
+test("overview: at the limit shows the note with the Upgrade text (Free)", async () => {
+  loadOwnedProject.mockResolvedValue({ ...p(ID, "Docs bot"), messagesUsed: 100 });
+  render(await ProjectPage({ params: Promise.resolve({ id: ID }) }));
+  expect(screen.getByText("100 of 100")).toBeTruthy();
+  expect(
+    screen.getByText(
+      "The widget shows visitors a 'chat unavailable' message until next month. Upgrade for 2,000 per month.",
+    ),
+  ).toBeTruthy();
+});
+
+test("overview: the Pro limit comes from the server-read plan", async () => {
+  getPlan.mockResolvedValue("pro");
+  loadOwnedProject.mockResolvedValue({ ...p(ID, "Docs bot"), messagesUsed: 100 });
+  render(await ProjectPage({ params: Promise.resolve({ id: ID }) }));
+  expect(screen.getByText("100 of 2000")).toBeTruthy();
+  expect(screen.queryByText(/chat unavailable/)).toBeNull();
+});
+
+test("overview: a stale period shows 0", async () => {
+  loadOwnedProject.mockResolvedValue({ ...p(ID, "Docs bot"), messagesUsed: 100, periodStart: "2026-10-01T00:00:00+00:00" });
+  render(await ProjectPage({ params: Promise.resolve({ id: ID }) }));
+  expect(screen.getByText("0 of 100")).toBeTruthy();
 });
 
 test("not found (missing or someone else's): layout shows the not-found state, page calls notFound", async () => {

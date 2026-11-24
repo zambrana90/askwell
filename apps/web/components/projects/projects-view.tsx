@@ -12,6 +12,7 @@ import type {
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
 import { Panel } from "../ui/panel";
+import { currentUsage } from "../../lib/usage/usage";
 import { ConfirmDialog } from "./confirm-dialog";
 
 type Props = {
@@ -205,7 +206,7 @@ export function ProjectsView({ initialProjects, maxProjects, messagesPerMonth, l
                         {p.name}
                       </Link>
                       <p className="mt-1 text-sm text-ink-muted">
-                        Created {formatDate(p.createdAt)} · {p.messagesUsed} of {messagesPerMonth} messages this month
+                        Created {formatDate(p.createdAt)} · {currentUsage(p, messagesPerMonth, new Date()).used} of {messagesPerMonth} messages this month
                       </p>
                     </div>
                     <div className="flex gap-2">

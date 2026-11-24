@@ -293,6 +293,20 @@ export type Database = {
           source_id: string
         }[]
       }
+      match_chunks_active: {
+        Args: {
+          p_embedding: string
+          p_match_count: number
+          p_max_sources: number
+          p_project_id: string
+        }
+        Returns: {
+          content: string
+          id: string
+          similarity: number
+          source_id: string
+        }[]
+      }
       owned_conversation_ids: { Args: never; Returns: string[] }
       owned_project_ids: { Args: never; Returns: string[] }
       owner_activity: {
@@ -304,6 +318,10 @@ export type Database = {
           preview: string
           visitor_id: string
         }[]
+      }
+      project_is_active: {
+        Args: { p_max_projects: number; p_project_id: string }
+        Returns: boolean
       }
       reserve_knowledge_source: {
         Args: {

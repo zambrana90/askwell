@@ -8,6 +8,9 @@ import type {
 import { getOwnedProject } from "../projects/projects";
 import { createOwnerClient } from "../supabase/owner";
 
+/** Rows per request. Below the Data API's `max_rows` (1000) so a long thread is never cut off. */
+const MESSAGE_PAGE_SIZE = 500;
+
 /** Thrown when the project or conversation doesn't exist or isn't the caller's (RLS decides). */
 export class NotFoundError extends Error {}
 
@@ -46,13 +49,20 @@ export async function getThread(conversationId: string): Promise<ConversationThr
   if (error) throw new Error(`conversation lookup failed: ${error.message}`);
   if (!conversation) throw new NotFoundError();
 
-  const { data: messages, error: messagesError } = await db
-    .from("messages")
-    .select("id, role, body, created_at")
-    .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true })
-    .order("id", { ascending: true });
-  if (messagesError) throw new Error(`messages lookup failed: ${messagesError.message}`);
+  // Read every page, oldest first (created_at, then id on every page), until a short page.
+  const messages: { id: string; role: string; body: string; created_at: string }[] = [];
+  for (let from = 0; ; from += MESSAGE_PAGE_SIZE) {
+    const { data: page, error: messagesError } = await db
+      .from("messages")
+      .select("id, role, body, created_at")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + MESSAGE_PAGE_SIZE - 1);
+    if (messagesError) throw new Error(`messages lookup failed: ${messagesError.message}`);
+    messages.push(...page);
+    if (page.length < MESSAGE_PAGE_SIZE) break;
+  }
 
   return {
     conversation: { id: conversation.id, visitorId: conversation.visitor_id, createdAt: conversation.created_at },

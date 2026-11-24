@@ -9,7 +9,7 @@ const results: Record<string, { data: unknown; error: unknown }> = {};
 const calls: Array<[string, unknown[]]> = [];
 function query(table: string) {
   const b: Record<string, unknown> = {};
-  for (const m of ["select", "eq", "order"]) {
+  for (const m of ["select", "eq", "order", "range"]) {
     b[m] = (...args: unknown[]) => (calls.push([`${table}.${m}`, args]), b);
   }
   b.maybeSingle = () => Promise.resolve(results[table]);
@@ -136,6 +136,33 @@ describe("GET /api/conversations/:id", () => {
     const orders = calls.filter(([n]) => n === "messages.order").map(([, a]) => a);
     expect(orders).toEqual([["created_at", { ascending: true }], ["id", { ascending: true }]]);
     expect(serviceClient).not.toHaveBeenCalled();
+  });
+
+  test("reads every page of a long thread, in order, and stops at a short page", async () => {
+    const mk = (n: number) => ({
+      id: `m${String(n).padStart(4, "0")}`,
+      role: n % 2 ? "bot" : "visitor",
+      body: `msg ${n}`,
+      created_at: "2026-11-03T10:00:00+00:00",
+    });
+    const pages = [
+      Array.from({ length: 500 }, (_, i) => mk(i)),
+      Array.from({ length: 500 }, (_, i) => mk(500 + i)),
+      Array.from({ length: 3 }, (_, i) => mk(1000 + i)),
+    ];
+    let n = 0;
+    Object.defineProperty(results, "messages", { configurable: true, get: () => ({ data: pages[n++], error: null }) });
+    const res = await THREAD(req, ctx(CID));
+    Object.defineProperty(results, "messages", { configurable: true, writable: true, value: undefined });
+    const body = await res.json();
+    expect(body.messages).toHaveLength(1003);
+    expect(body.messages[0].id).toBe("m0000");
+    expect(body.messages[1002].id).toBe("m1002");
+    expect(calls.filter(([name]) => name === "messages.range").map(([, a]) => a)).toEqual([
+      [0, 499],
+      [500, 999],
+      [1000, 1499],
+    ]);
   });
 
   test("500 internal on a database error, no detail leaked", async () => {

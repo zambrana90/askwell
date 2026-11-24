@@ -46,18 +46,13 @@ export function planFromItems(items: LiveItem[], now: number): Plan {
   return pro ? "pro" : "free";
 }
 
-/**
- * Sets `accounts.plan` from the user's live subscription in Clerk, with the service client.
- * Call only after the webhook signature is verified. Creates a missing accounts row first.
- * Safe to repeat. Sends `upgraded` only when the plan actually changes to pro.
- * Throws if Clerk or the database fails, so Clerk retries the delivery.
- */
-export async function syncPlan(userId: string): Promise<void> {
+async function livePlan(userId: string): Promise<Plan> {
   const clerk = await clerkClient();
   const subscription = await clerk.billing.getUserBillingSubscription(userId);
-  const plan = planFromItems(subscription.subscriptionItems, Date.now());
+  return planFromItems(subscription.subscriptionItems, Date.now());
+}
 
-  await ensureAccount(userId);
+async function writePlan(userId: string, plan: Plan): Promise<void> {
   // One conditional update: of two concurrent deliveries only one changes the row.
   const { data, error } = await createServiceClient()
     .from("accounts")
@@ -67,4 +62,27 @@ export async function syncPlan(userId: string): Promise<void> {
     .select("clerk_user_id");
   if (error) throw new Error(`plan update failed: ${error.message}`);
   if (plan === "pro" && data.length > 0) trackUpgraded(userId);
+}
+
+const SYNC_ATTEMPTS = 3;
+
+/**
+ * Sets `accounts.plan` from the user's live subscription in Clerk, with the service client.
+ * Call only after the webhook signature is verified. Creates a missing accounts row first.
+ * Safe to repeat. Sends `upgraded` only when the plan actually changes to pro.
+ * Reads the subscription again after writing, so a delivery that wrote an outdated plan
+ * over a newer one corrects it.
+ * Throws if Clerk or the database fails, or the subscription keeps changing, so Clerk
+ * retries the delivery.
+ */
+export async function syncPlan(userId: string): Promise<void> {
+  let plan = await livePlan(userId);
+  await ensureAccount(userId);
+  for (let attempt = 0; attempt < SYNC_ATTEMPTS; attempt++) {
+    await writePlan(userId, plan);
+    const current = await livePlan(userId);
+    if (current === plan) return;
+    plan = current;
+  }
+  throw new Error("subscription changed during every sync attempt");
 }

@@ -14,6 +14,8 @@ vi.mock("../../../lib/analytics/events", () => ({
 type LiveItem = { status: string; periodEnd: number | null; plan: { slug: string } | null };
 let liveItems: LiveItem[] = [];
 let clerkError: Error | null = null;
+// Answers for the next lookups, in order; after them, `liveItems`.
+let nextLookups: LiveItem[][] = [];
 const lookups = vi.fn();
 vi.mock("@clerk/nextjs/server", () => ({
   clerkClient: async () => ({
@@ -21,7 +23,7 @@ vi.mock("@clerk/nextjs/server", () => ({
       getUserBillingSubscription: async (userId: string) => {
         lookups(userId);
         if (clerkError) throw clerkError;
-        return { subscriptionItems: liveItems };
+        return { subscriptionItems: nextLookups.shift() ?? liveItems };
       },
     },
   }),
@@ -105,6 +107,7 @@ beforeEach(() => {
   lookups.mockClear();
   liveItems = [live("active")];
   clerkError = null;
+  nextLookups = [];
   trackUpgraded.mockReset();
   vi.stubEnv("CLERK_WEBHOOK_SIGNING_SECRET", SECRET);
   vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -131,7 +134,7 @@ describe("POST /api/clerk/webhook", () => {
 
   test("an active event with a live Pro item gives pro and sends upgraded once", async () => {
     expect((await POST(request(item("subscriptionItem.active")))).status).toBe(200);
-    expect(lookups.mock.calls).toEqual([["user_1"]]);
+    expect(lookups.mock.calls).toEqual([["user_1"], ["user_1"]]); // before and after the write
     expect(accounts.get("user_1")).toBe("pro");
     expect(trackUpgraded.mock.calls).toEqual([["user_1"]]);
   });
@@ -191,6 +194,23 @@ describe("POST /api/clerk/webhook", () => {
     await POST(request(item("subscriptionItem.active", { payer: { user_id: "user_new" } })));
     expect(accounts.get("user_new")).toBe("pro");
     expect(trackUpgraded.mock.calls).toEqual([["user_new"]]);
+  });
+
+  test.each([
+    ["ended", "pro", [live("active")], [live("ended")], "free"],
+    ["started", "free", [live("ended")], [live("active")], "pro"],
+  ])("corrects its write when Pro %s between the lookup and the write", async (_name, before, first, now, expected) => {
+    accounts.set("user_1", before === "pro" ? "free" : "pro");
+    nextLookups = [first];
+    liveItems = now;
+    expect((await POST(request(item("subscriptionItem.active")))).status).toBe(200);
+    expect(accounts.get("user_1")).toBe(expected);
+  });
+
+  test("500 when the subscription changes during every attempt", async () => {
+    nextLookups = [[live("active")], [live("ended")], [live("active")], [live("ended")]];
+    expect((await POST(request(item("subscriptionItem.active")))).status).toBe(500);
+    expect(lookups).toHaveBeenCalledTimes(4);
   });
 
   test("500 and nothing written when the Clerk lookup fails, so Clerk retries", async () => {

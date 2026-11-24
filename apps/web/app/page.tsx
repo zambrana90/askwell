@@ -7,6 +7,7 @@ import { LandingHeader } from "../components/landing/header";
 import { Hero } from "../components/landing/hero";
 import { HowItWorks } from "../components/landing/how-it-works";
 import { Install } from "../components/landing/install";
+import { LandingWidget, landingWidgetKey } from "../components/landing/landing-widget";
 import { Pricing } from "../components/landing/pricing";
 
 export const metadata: Metadata = {
@@ -14,7 +15,11 @@ export const metadata: Metadata = {
   description: `${APP_NAME} answers your visitors' questions from your own content. Add one script tag to your site.`,
 };
 
+// LANDING_WIDGET_KEY is read at request time, so this page must not be prerendered at build.
+export const dynamic = "force-dynamic";
+
 export default function Home() {
+  const widgetKey = landingWidgetKey();
   return (
     <AppClerkProvider>
       <div className="theme-dark min-h-screen overflow-x-clip bg-canvas text-ink">
@@ -22,11 +27,12 @@ export default function Home() {
         <main>
           <Hero />
           <HowItWorks />
-          <Demo />
+          <Demo live={widgetKey !== null} />
           <Pricing />
           <Install />
         </main>
         <Footer />
+        <LandingWidget widgetKey={widgetKey} />
       </div>
     </AppClerkProvider>
   );

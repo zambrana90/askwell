@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-type SectionProps = { id: string; title: string; intro?: string; children: ReactNode };
+type SectionProps = { id: string; title: string; intro?: string; children?: ReactNode };
 
 export function Section({ id, title, intro, children }: SectionProps) {
   return (
@@ -9,7 +9,7 @@ export function Section({ id, title, intro, children }: SectionProps) {
         {title}
       </h2>
       {intro ? <p className="mt-3 max-w-2xl text-ink-muted">{intro}</p> : null}
-      <div className="mt-8">{children}</div>
+      {children ? <div className="mt-8">{children}</div> : null}
     </section>
   );
 }

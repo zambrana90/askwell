@@ -90,6 +90,32 @@ test("a plan_limit reply shows the limit message", async () => {
   expect(await screen.findByText(MSG)).toBeTruthy();
 });
 
+test("after a plan_limit reply the form is blocked and refreshed; fresh data with room unblocks it", async () => {
+  const { rerender } = view([src("1", "A", "ready")]);
+  fireEvent.change(screen.getByLabelText("Title"), { target: { value: "T" } });
+  fireEvent.change(screen.getByLabelText("Text"), { target: { value: "body" } });
+  reply(403, { error: { code: "plan_limit", message: "nope" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add text" }));
+  expect(await screen.findByText(MSG)).toBeTruthy();
+  expect(refresh).toHaveBeenCalled();
+  // The local list (1 of 3) looked like it had room, but the API said full: everything is blocked.
+  expect((screen.getByLabelText("Title") as HTMLInputElement).disabled).toBe(true);
+  expect((screen.getByLabelText("Text") as HTMLTextAreaElement).disabled).toBe(true);
+  expect((screen.getByRole("button", { name: "Add text" }) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByLabelText(/File \(PDF/) as HTMLInputElement).disabled).toBe(true);
+  // A refresh that still shows no room keeps it blocked.
+  rerender(
+    <KnowledgeView projectId="p1" initialSources={[src("1", "A", "ready"), src("2", "B", "ready"), src("3", "C", "ready")]} maxSources={3} limitMessage={MSG} pollMs={4000} />,
+  );
+  expect(screen.getByText(MSG)).toBeTruthy();
+  // Fresh data with room clears the block.
+  rerender(
+    <KnowledgeView projectId="p1" initialSources={[src("1", "A", "ready")]} maxSources={3} limitMessage={MSG} pollMs={4000} />,
+  );
+  expect(screen.queryByText(MSG)).toBeNull();
+  expect((screen.getByLabelText("Title") as HTMLInputElement).disabled).toBe(false);
+});
+
 test("paste text posts, lists the new source and clears the form", async () => {
   view([]);
   fireEvent.change(screen.getByLabelText("Title"), { target: { value: " Hours " } });

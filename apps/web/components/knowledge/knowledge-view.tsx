@@ -73,6 +73,8 @@ export function KnowledgeView({ projectId, initialSources, maxSources, limitMess
   if (seen !== initialSources) {
     setSeen(initialSources);
     setSources(initialSources);
+    // Fresh server data is the truth: if it shows room, a stale plan_limit reply no longer blocks.
+    if (initialSources.length < maxSources) setLimitHit(false);
   }
 
   const anyPending = sources.some(isPending);
@@ -82,8 +84,8 @@ export function KnowledgeView({ projectId, initialSources, maxSources, limitMess
     return () => clearInterval(id);
   }, [anyPending, pollMs, router]);
 
-  const atLimit = sources.length >= maxSources;
-  const showLimit = atLimit || limitHit;
+  // One blocked state: the list says full, or the API just said plan_limit.
+  const blocked = sources.length >= maxSources || limitHit;
   const busy = pasting || uploading;
   const base = `/api/projects/${projectId}/knowledge`;
 
@@ -94,7 +96,7 @@ export function KnowledgeView({ projectId, initialSources, maxSources, limitMess
 
   async function onPaste(e: FormEvent) {
     e.preventDefault();
-    if (atLimit || !title.trim() || !text.trim()) return;
+    if (blocked || !title.trim() || !text.trim()) return;
     setPasting(true);
     setPasteError(null);
     const res = await call<PasteKnowledgeResponse>("POST", base, { title: title.trim(), text: text.trim() });
@@ -105,13 +107,14 @@ export function KnowledgeView({ projectId, initialSources, maxSources, limitMess
       setText("");
     } else if (res.code === "plan_limit") {
       setLimitHit(true);
+      router.refresh(); // bring in the real source count
     } else {
       setPasteError(res.message);
     }
   }
 
   async function onFile(file: File | undefined) {
-    if (!file) return;
+    if (!file || blocked) return;
     setUploadError(null);
     const problem = checkFile(file);
     if (problem) {
@@ -132,7 +135,10 @@ export function KnowledgeView({ projectId, initialSources, maxSources, limitMess
       mime: mimeFor(file.name),
     });
     if (!reserved.ok) {
-      if (reserved.code === "plan_limit") setLimitHit(true);
+      if (reserved.code === "plan_limit") {
+        setLimitHit(true);
+        router.refresh(); // bring in the real source count
+      }
       return done(reserved.code === "plan_limit" ? null : reserved.message);
     }
     const stored = await uploadToStorage(reserved.data.path, reserved.data.token, file);
@@ -194,7 +200,7 @@ export function KnowledgeView({ projectId, initialSources, maxSources, limitMess
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={MAX_KNOWLEDGE_TITLE_LENGTH}
-                disabled={atLimit || busy}
+                disabled={blocked || busy}
                 className={input}
               />
             </div>
@@ -208,11 +214,11 @@ export function KnowledgeView({ projectId, initialSources, maxSources, limitMess
                 onChange={(e) => setText(e.target.value)}
                 maxLength={MAX_KNOWLEDGE_TEXT_LENGTH}
                 rows={6}
-                disabled={atLimit || busy}
+                disabled={blocked || busy}
                 className={`${input} py-2`}
               />
             </div>
-            <Button type="submit" loading={pasting} disabled={atLimit || busy || !title.trim() || !text.trim()}>
+            <Button type="submit" loading={pasting} disabled={blocked || busy || !title.trim() || !text.trim()}>
               Add text
             </Button>
             {pasteError ? (
@@ -234,7 +240,7 @@ export function KnowledgeView({ projectId, initialSources, maxSources, limitMess
               ref={fileRef}
               type="file"
               accept={ACCEPT}
-              disabled={atLimit || busy}
+              disabled={blocked || busy}
               onChange={(e) => void onFile(e.target.files?.[0])}
               className="text-sm text-ink file:mr-3 file:min-h-10 file:rounded-glass file:border file:border-glass-edge file:bg-glass file:px-4 file:text-ink disabled:opacity-50"
             />
@@ -252,7 +258,7 @@ export function KnowledgeView({ projectId, initialSources, maxSources, limitMess
         </Panel>
       </div>
 
-      {showLimit ? (
+      {blocked ? (
         <p role="status" className="mb-6 text-sm text-ink-muted">
           {limitMessage}
         </p>

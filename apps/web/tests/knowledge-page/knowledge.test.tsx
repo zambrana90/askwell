@@ -237,9 +237,9 @@ test("limit message for each plan", () => {
   expect(knowledgeLimitMessage("pro")).toBe("Your Pro plan includes 25 sources per project.");
 });
 
-test("subnav has Knowledge between Overview and Install", () => {
+test("subnav has Knowledge between Overview and Conversations", () => {
   render(<ProjectSubnav projectId="p1" />);
   const links = screen.getAllByRole("link").map((a) => a.textContent);
-  expect(links).toEqual(["Overview", "Knowledge", "Install"]);
+  expect(links).toEqual(["Overview", "Knowledge", "Conversations", "Install"]);
   expect(screen.getByRole("link", { name: "Knowledge" }).getAttribute("aria-current")).toBe("page");
 });

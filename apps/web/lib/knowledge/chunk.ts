@@ -32,6 +32,11 @@ function findEnd(text: string, start: number): number {
   const space = window.search(/\s\S*$/);
   if (space > 0) return floor + space + 1;
 
+  // No boundary in the window: look earlier so a word that fits in a chunk stays whole.
+  // Only a word longer than CHUNK_SIZE is hard cut.
+  const earlier = text.slice(start + 1, floor).search(/\s\S*$/);
+  if (earlier >= 0) return start + 1 + earlier + 1;
+
   return hardEnd;
 }
 

@@ -67,6 +67,12 @@ describe("chunkText", () => {
     for (const c of chunks) expect(c.split(" ").every((w) => w === "lorem")).toBe(true);
   });
 
+  test("keeps a word that fits in a chunk whole, even when its separator is before the window", () => {
+    const word = "x".repeat(1000);
+    const chunks = chunkText("short ".repeat(100) + word);
+    expect(chunks.some((c) => c.includes(word))).toBe(true);
+  });
+
   test("a single huge word is cut hard and still terminates", () => {
     const chunks = chunkText("x".repeat(CHUNK_SIZE * 3 + 10));
     expect(chunks.length).toBeGreaterThanOrEqual(3);

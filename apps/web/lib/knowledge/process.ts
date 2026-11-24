@@ -21,6 +21,7 @@ export type ProcessSourceResult = { status: "ready"; chunks: number } | { status
  * Turns a source into searchable chunks: text → chunks → embeddings → rows → status `ready`.
  * On any failure it removes this source's chunks, sets `failed` and logs. It never throws.
  * Re-running on the same source replaces its chunks.
+ * Callers must ensure one run per source (A3's claim).
  *
  * Uses the service client: the caller (A3's routes) MUST have checked that the signed-in owner
  * owns this source's project before calling this.
@@ -81,10 +82,14 @@ async function deleteChunks(db: ReturnType<typeof createServiceClient>, sourceId
   if (error) throw error;
 }
 
-/** Best effort: this runs inside a catch, so a failure here is logged and swallowed. */
+/** Best effort: this runs inside a catch. Both steps are always attempted; errors are logged and swallowed. */
 async function markFailed(db: ReturnType<typeof createServiceClient>, sourceId: string): Promise<void> {
   try {
     await deleteChunks(db, sourceId);
+  } catch (err) {
+    console.error(`Could not delete chunks of failed source ${sourceId}:`, err instanceof Error ? err.message : err);
+  }
+  try {
     const { error } = await db.from("knowledge_sources").update({ status: "failed" }).eq("id", sourceId);
     if (error) throw error;
   } catch (err) {

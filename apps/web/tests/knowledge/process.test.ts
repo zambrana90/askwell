@@ -8,6 +8,7 @@ const state = {
   chunks: [] as Row[],
   files: new Map<string, Uint8Array>(),
   failInsert: false,
+  failDelete: false,
 };
 const embedTexts = vi.fn();
 
@@ -24,6 +25,7 @@ vi.mock("../../lib/supabase/service", () => ({
         }),
         delete: () => ({
           eq: async (col: string, val: unknown) => {
+            if (state.failDelete) return { error: new Error("delete failed") };
             const keep = rows.filter((r) => r[col] !== val);
             rows.length = 0;
             rows.push(...keep);
@@ -67,6 +69,7 @@ beforeEach(() => {
   state.chunks = [];
   state.files = new Map();
   state.failInsert = false;
+  state.failDelete = false;
   embedTexts.mockReset();
   embedTexts.mockImplementation(async (texts: string[]) => texts.map((_, i) => vector(i)));
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -168,6 +171,14 @@ describe("processSource", () => {
   test("missing file in Storage → failed", async () => {
     addSource({ type: "pdf", storage_key: "p1/missing.pdf" });
     await expect(processSource({ sourceId: "s1" })).resolves.toEqual({ status: "failed" });
+    expect(status()).toBe("failed");
+  });
+
+  test("chunk cleanup error still sets the status to failed", async () => {
+    addSource();
+    state.failInsert = true;
+    state.failDelete = true;
+    await expect(processSource({ sourceId: "s1", text: "Some text here." })).resolves.toEqual({ status: "failed" });
     expect(status()).toBe("failed");
   });
 

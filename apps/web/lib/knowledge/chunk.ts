@@ -55,7 +55,8 @@ export function chunkText(input: string): string[] {
     if (end >= text.length) break;
 
     // Step back for the overlap, then forward to a word start so no chunk begins mid-word.
-    let next = Math.max(end - CHUNK_OVERLAP, start + 1);
+    // A short span (<= overlap) moves on to its end, so it is never repeated as a prefix.
+    let next = end - start <= CHUNK_OVERLAP ? end : end - CHUNK_OVERLAP;
     if (!/\s/.test(text[next - 1] ?? "")) {
       const ws = text.slice(next, end).search(/\s/);
       if (ws >= 0) next += ws + 1;

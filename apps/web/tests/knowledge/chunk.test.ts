@@ -73,6 +73,14 @@ describe("chunkText", () => {
     expect(chunks.some((c) => c.includes(word))).toBe(true);
   });
 
+  test("a short prefix before a long word is not repeated as near-duplicate chunks", () => {
+    const word = "x".repeat(1500);
+    const chunks = chunkText("a ".repeat(100) + word);
+    expect(chunks.length).toBeLessThanOrEqual(3);
+    expect(chunks.some((c) => c.includes(word))).toBe(true);
+    expect(chunks.filter((c) => c.startsWith("a a")).length).toBe(1);
+  });
+
   test("a single huge word is cut hard and still terminates", () => {
     const chunks = chunkText("x".repeat(CHUNK_SIZE * 3 + 10));
     expect(chunks.length).toBeGreaterThanOrEqual(3);

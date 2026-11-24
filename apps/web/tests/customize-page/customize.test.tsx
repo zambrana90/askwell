@@ -184,6 +184,18 @@ describe("Pro: save", () => {
     expect(alert.textContent).not.toMatch(/server detail/);
   });
 
+  test("the fields are locked while a save is pending, so a newer edit can't be overwritten", async () => {
+    let resolve!: (v: unknown) => void;
+    fetchMock.mockReturnValueOnce(new Promise((r) => (resolve = r)));
+    form({ canCustomize: true, initial: saved });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.getByLabelText("Button label").matches(":disabled")).toBe(true));
+    expect(screen.getByLabelText("Header text").matches(":disabled")).toBe(true);
+    resolve({ ok: true, status: 200, json: async () => ({ config: saved }) });
+    await waitFor(() => expect(screen.getByLabelText("Button label").matches(":disabled")).toBe(false));
+    expect(screen.getByRole("status").textContent).toMatch(/Saved/);
+  });
+
   test("a network error shows a message and re-enables Save", async () => {
     fetchMock.mockRejectedValueOnce(new Error("offline"));
     form({ canCustomize: true, initial: saved });

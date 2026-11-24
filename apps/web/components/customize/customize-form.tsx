@@ -98,7 +98,8 @@ export function CustomizeForm({ projectId, initialConfig, canCustomize, upgradeH
         ) : null}
 
         <form onSubmit={onSubmit} className="flex flex-col gap-5">
-          <fieldset disabled={!canCustomize} className="flex flex-col gap-5 border-0 p-0">
+          {/* Disabled while saving too, so an edit made mid-request can't be overwritten by the response. */}
+          <fieldset disabled={!canCustomize || saving} className="flex flex-col gap-5 border-0 p-0">
             <div className="flex flex-col gap-1">
               <label htmlFor="cz-color" className="text-sm font-medium">
                 Button color

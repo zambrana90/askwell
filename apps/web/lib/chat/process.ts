@@ -8,8 +8,10 @@ import {
 } from "@askwell/shared";
 import { answerQuestion, MAX_HISTORY_MESSAGES, type HistoryMessage } from "../ai/answer";
 import { embedQuery } from "../ai/embeddings";
+import type { AiCall } from "../ai/trace";
 import { protectChat } from "../security/arcjet";
 import { createServiceClient } from "../supabase/service";
+import { trackAiCalls, trackFirstChat, trackMessageBlocked } from "./track";
 
 const MATCH_COUNT = 5;
 
@@ -44,15 +46,21 @@ export async function processChat(request: Request): Promise<WidgetChatResponse>
 
   // 2. Arcjet: nothing is counted or saved when it blocks.
   const verdict = await protectChat(request, { publicKey: key, message });
-  if (verdict === "rate_limited") throw new ChatFailure("rate_limited", "Too many requests.");
-  if (verdict === "injection") throw new ChatFailure("forbidden", FORBIDDEN_MESSAGE);
+  if (verdict === "rate_limited") {
+    trackMessageBlocked(key, "rate_limit");
+    throw new ChatFailure("rate_limited", "Too many requests.");
+  }
+  if (verdict === "injection") {
+    trackMessageBlocked(key, "injection");
+    throw new ChatFailure("forbidden", FORBIDDEN_MESSAGE);
+  }
 
   const db = createServiceClient();
 
   // 3. Resolve the project from the key only, then check the conversation belongs to it.
   const { data: project, error: projectError } = await db
     .from("projects")
-    .select("id, accounts(plan)")
+    .select("id, owner_id, accounts(plan)")
     .eq("public_key", key)
     .maybeSingle();
   if (projectError) throw new Error(`project lookup failed: ${projectError.message}`);
@@ -80,47 +88,65 @@ export async function processChat(request: Request): Promise<WidgetChatResponse>
   if (consumeError) throw new Error(`consume_message failed: ${consumeError.message}`);
   if (!counted) throw new ChatFailure("quota_exceeded", "Message limit reached.");
 
-  // 5. Retrieve: top chunks of this project's ready sources.
-  const embedding = await embedQuery(message);
-  const { data: matches, error: matchError } = await db.rpc("match_chunks", {
-    p_project_id: project.id,
-    p_embedding: JSON.stringify(embedding),
-    p_match_count: MATCH_COUNT,
-  });
-  if (matchError) throw new Error(`match_chunks failed: ${matchError.message}`);
-  const chunks = (matches ?? []).map((m) => m.content);
+  // 9. Track (after the response). A new conversation has its id only once saved.
+  const calls: AiCall[] = [];
+  const onCall = (call: AiCall) => calls.push(call);
+  let savedConversationId: string | undefined;
+  try {
+    // 5. Retrieve: top chunks of this project's ready sources.
+    const embedding = await embedQuery(message, onCall);
+    const { data: matches, error: matchError } = await db.rpc("match_chunks", {
+      p_project_id: project.id,
+      p_embedding: JSON.stringify(embedding),
+      p_match_count: MATCH_COUNT,
+    });
+    if (matchError) throw new Error(`match_chunks failed: ${matchError.message}`);
+    const chunks = (matches ?? []).map((m) => m.content);
 
-  // 6. History: the last 6 messages of this conversation, oldest first.
-  let history: HistoryMessage[] = [];
-  if (conversationId) {
-    const { data: rows, error } = await db
-      .from("messages")
-      .select("role, body")
-      .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: false })
-      .limit(MAX_HISTORY_MESSAGES);
-    if (error) throw new Error(`history lookup failed: ${error.message}`);
-    history = (rows ?? [])
-      .reverse()
-      .map((r) => ({ role: r.role === "bot" ? ("assistant" as const) : ("user" as const), content: r.body }));
+    // 6. History: the last 6 messages of this conversation, oldest first.
+    let history: HistoryMessage[] = [];
+    if (conversationId) {
+      const { data: rows, error } = await db
+        .from("messages")
+        .select("role, body")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: false })
+        .limit(MAX_HISTORY_MESSAGES);
+      if (error) throw new Error(`history lookup failed: ${error.message}`);
+      history = (rows ?? [])
+        .reverse()
+        .map((r) => ({ role: r.role === "bot" ? ("assistant" as const) : ("user" as const), content: r.body }));
+    }
+
+    // 7. Answer. A model error propagates as 500; the message stays counted, nothing is saved.
+    const reply = await answerQuestion({ question: message, chunks, history, onCall });
+
+    // 8. Save the turn.
+    const { data: savedId, error: saveError } = await db.rpc("save_chat_turn", {
+      p_project_id: project.id,
+      // Explicit null creates a conversation. The generated type is not nullable, and an
+      // omitted (undefined) argument would not match the function.
+      p_conversation_id: conversationId ?? (null as unknown as string),
+      p_visitor_id: visitorId,
+      p_visitor_body: message,
+      p_bot_body: reply,
+    });
+    if (saveError) {
+      if (saveError.code === "P0002") throw new ChatFailure("not_found", "Unknown conversation.");
+      throw new Error(`save_chat_turn failed: ${saveError.message}`);
+    }
+    savedConversationId = savedId;
+    if (!conversationId) {
+      trackFirstChat({ ownerId: project.owner_id, projectId: project.id, conversationId: savedId });
+    }
+    return { conversationId: savedId, reply };
+  } finally {
+    trackAiCalls({
+      ownerId: project.owner_id,
+      projectId: project.id,
+      // A first message that failed before saving has no conversation: use a one-off id.
+      conversationId: savedConversationId ?? conversationId ?? crypto.randomUUID(),
+      calls,
+    });
   }
-
-  // 7. Answer. A model error propagates as 500; the message stays counted, nothing is saved.
-  const reply = await answerQuestion({ question: message, chunks, history });
-
-  // 8. Save the turn.
-  const { data: savedId, error: saveError } = await db.rpc("save_chat_turn", {
-    p_project_id: project.id,
-    // Explicit null creates a conversation. The generated type is not nullable, and an
-    // omitted (undefined) argument would not match the function.
-    p_conversation_id: conversationId ?? (null as unknown as string),
-    p_visitor_id: visitorId,
-    p_visitor_body: message,
-    p_bot_body: reply,
-  });
-  if (saveError) {
-    if (saveError.code === "P0002") throw new ChatFailure("not_found", "Unknown conversation.");
-    throw new Error(`save_chat_turn failed: ${saveError.message}`);
-  }
-  return { conversationId: savedId, reply };
 }

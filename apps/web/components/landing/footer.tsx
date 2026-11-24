@@ -7,7 +7,7 @@ export function Footer() {
       <p>
         {APP_NAME} © {new Date().getFullYear()}
       </p>
-      <Link href="/sign-in" className="hover:text-ink">
+      <Link href="/sign-in" className="-my-2.5 inline-flex min-h-10 items-center hover:text-ink">
         Sign in
       </Link>
     </footer>

@@ -5,6 +5,7 @@ import { WIDGET_SCRIPT_PATH } from "@askwell/shared/embed";
  * The public key of the project about the app itself. Read from the environment on every
  * call (never `NEXT_PUBLIC_`, never inlined at build time), so each environment sets its own.
  * Null when it is missing or not a valid key: the landing page then shows no widget.
+ * On Vercel, a changed variable reaches only deployments created after the change.
  */
 export function landingWidgetKey(): string | null {
   const parsed = widgetConfigQuerySchema.safeParse({ key: process.env.LANDING_WIDGET_KEY?.trim() });

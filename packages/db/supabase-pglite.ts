@@ -34,6 +34,16 @@ const SUPABASE_STUB = `
   create schema auth;
   grant usage on schema public, extensions, auth to anon, authenticated, service_role;
 
+  -- Minimal Storage: just enough for migrations that create buckets.
+  create schema storage;
+  create table storage.buckets (
+    id text primary key,
+    name text not null unique,
+    public boolean default false,
+    file_size_limit bigint,
+    allowed_mime_types text[]
+  );
+
   -- Same as Supabase: the JWT claims of the current request.
   create function auth.jwt() returns jsonb language sql stable as $$
     select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb

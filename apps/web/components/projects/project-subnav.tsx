@@ -8,6 +8,7 @@ export function ProjectSubnav({ projectId }: { projectId: string }) {
   const base = `/dashboard/projects/${projectId}`;
   const items = [
     { label: "Overview", href: base },
+    { label: "Knowledge", href: `${base}/knowledge` },
     { label: "Install", href: `${base}/install` },
   ];
   return (

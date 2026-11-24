@@ -10,7 +10,7 @@ import { LinkButton } from "./link-button";
 export function LandingHeader() {
   return (
     <header className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
-      <Link href="/" className="font-semibold">
+      <Link href="/" className="inline-flex min-h-10 items-center font-semibold">
         {APP_NAME}
       </Link>
       <nav aria-label="Account" className="flex min-h-10 min-w-24 justify-end">

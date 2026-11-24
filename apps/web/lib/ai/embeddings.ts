@@ -5,12 +5,36 @@ export const EMBEDDING_MODEL = "text-embedding-3-small";
 export const EMBEDDING_DIMENSIONS = 1536;
 export const EMBEDDING_BATCH_SIZE = 100;
 
-/** Embeds texts in batches of at most 100. The result order matches the input order. */
+/** OpenAI rejects a request over 300,000 tokens in total; stay well under it. */
+export const EMBEDDING_BATCH_TOKEN_BUDGET = 250_000;
+
+/** Conservative token estimate (about 3 characters per token, rounded up). */
+const estimateTokens = (text: string) => Math.ceil(text.length / 3);
+
+/** Splits into consecutive batches of at most 100 inputs and ~250k estimated tokens. */
+export function batchTexts(texts: string[]): string[][] {
+  const batches: string[][] = [];
+  let current: string[] = [];
+  let tokens = 0;
+  for (const text of texts) {
+    const t = estimateTokens(text);
+    if (current.length > 0 && (current.length >= EMBEDDING_BATCH_SIZE || tokens + t > EMBEDDING_BATCH_TOKEN_BUDGET)) {
+      batches.push(current);
+      current = [];
+      tokens = 0;
+    }
+    current.push(text);
+    tokens += t;
+  }
+  if (current.length > 0) batches.push(current);
+  return batches;
+}
+
+/** Embeds texts in batches (≤100 inputs, ≤~250k tokens each). The result order matches the input order. */
 export async function embedTexts(texts: string[]): Promise<number[][]> {
   const openai = getOpenAI();
   const out: number[][] = [];
-  for (let i = 0; i < texts.length; i += EMBEDDING_BATCH_SIZE) {
-    const batch = texts.slice(i, i + EMBEDDING_BATCH_SIZE);
+  for (const batch of batchTexts(texts)) {
     const res = await openai.embeddings.create({ model: EMBEDDING_MODEL, input: batch });
     const sorted = [...res.data].sort((a, b) => a.index - b.index);
     if (sorted.length !== batch.length) {

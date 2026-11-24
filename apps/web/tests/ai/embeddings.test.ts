@@ -16,6 +16,19 @@ beforeEach(() => {
 });
 
 describe("embedTexts", () => {
+  test("splits by token budget: 100 docs of ~4,000 tokens never go in one request", async () => {
+    create.mockImplementation(async ({ input }: { input: string[] }) => ({
+      data: input.map((_, index) => ({ index, embedding: [index] })),
+    }));
+    const big = "x".repeat(12_000); // ~4,000 tokens
+    const out = await embedTexts(Array.from({ length: 100 }, () => big));
+    expect(out).toHaveLength(100);
+    expect(create.mock.calls.length).toBeGreaterThan(1);
+    for (const [args] of create.mock.calls) {
+      expect(args.input.length * 4_000).toBeLessThanOrEqual(300_000);
+    }
+  });
+
   test("batches at 100 inputs and keeps order", async () => {
     create.mockImplementation(async ({ input }: { input: string[] }) => ({
       // return reversed, to prove order is restored from `index`

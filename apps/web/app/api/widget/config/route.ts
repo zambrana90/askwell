@@ -50,9 +50,10 @@ export async function GET(request: Request) {
   return NextResponse.json(config, {
     headers: {
       ...CORS_HEADERS,
-      // Browsers may cache for a minute. The Vercel CDN must not: a cached hit never
-      // reaches the function, so the Arcjet rate limit would never run.
-      "Cache-Control": "public, max-age=60",
+      // Browsers revalidate on every page load, so a saved config shows on the next reload.
+      // The Vercel CDN must not cache either: a cached hit never reaches the function, so the
+      // Arcjet rate limit would never run.
+      "Cache-Control": "public, no-cache",
       "Vercel-CDN-Cache-Control": "no-store",
       "CDN-Cache-Control": "no-store",
     },

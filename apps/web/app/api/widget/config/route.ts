@@ -6,6 +6,7 @@ import {
   type ApiErrorCode,
   type WidgetConfigResponse,
 } from "@askwell/shared";
+import { protectConfig } from "../../../../lib/security/arcjet";
 import { getWidgetConfigByKey } from "../../../../lib/widget/config";
 
 // Public route: any origin, no credentials (project.md §9).
@@ -34,6 +35,9 @@ export async function GET(request: Request) {
     key: new URL(request.url).searchParams.get("key") ?? undefined,
   });
   if (!parsed.success) return fail("validation_error", "A valid key is required.");
+
+  const verdict = await protectConfig(request, { publicKey: parsed.data.key });
+  if (verdict === "rate_limited") return fail("rate_limited", "Too many requests.");
 
   let config: WidgetConfigResponse | null;
   try {

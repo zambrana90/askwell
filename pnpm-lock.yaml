@@ -196,6 +196,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@arcjet/next':
+        specifier: ^1.16.0
+        version: 1.16.0(next@16.4.6(@babel/core@7.29.13(supports-color@7.2.0))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
       '@askwell/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -211,6 +214,9 @@ importers:
       next:
         specifier: ^16.4.0
         version: 16.4.6(@babel/core@7.29.13(supports-color@7.2.0))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      openai:
+        specifier: ^7.62.0
+        version: 7.62.0(undici@8.13.1)(zod@4.6.7)
       react:
         specifier: ^19.3.0
         version: 19.3.1
@@ -283,6 +289,72 @@ packages:
     resolution: {integrity: sha512-U4+70Pc5ZS9osnCBCE5Jha/ciHM+Yp+CNMNC/7HvYbNRk1Ldd+f7qO65W5qfhu/TCv+/ozljlXXe9Nj8419DMA==}
     engines: {node: '>=10'}
 
+  '@arcjet/analyze-wasm@1.16.0':
+    resolution: {integrity: sha512-2OIzCd24gE1rKKnTF07OR5dia3iGjSRfhpvsbl+1TLlgxuxJt0BV8FGt/tbLebfrEJUmRDAzbk8yojdf4CbFEA==}
+    engines: {node: '>=22.21.0 <23 || >=24.5.0'}
+
+  '@arcjet/analyze@1.16.0':
+    resolution: {integrity: sha512-JHwJ6q+d83I8dOmRzPlS8n0tyh39Yynm1zRfcgIl1iw+5JzFvnfQHQZpaVIInN7XafMn2bX8hdDu4gj02KmqlQ==}
+    engines: {node: '>=22.21.0 <23 || >=24.5.0'}
+
+  '@arcjet/body@1.16.0':
+    resolution: {integrity: sha512-v2Pf0A+afQxhpfO/dACSEgIiQ+GQK/EG73OX8NlDKhMI5/GIlAwhUu0yE/aXW1/d3XN2MfvypWpvTioddttU/Q==}
+    engines: {node: '>=22.21.0 <23 || >=24.5.0'}
+
+  '@arcjet/cache@1.16.0':
+    resolution: {integrity: sha512-gSfWOBxVLLsynjPBquuDPNqeclvURT1sGFFzRtdpt4dyyxDJBKhckKz+KiA5wfdhEwGhPb+Rz82oNw8pgOl0yQ==}
+    engines: {node: '>=22.21.0 <23 || >=24.5.0'}
+
+  '@arcjet/duration@1.16.0':
+    resolution: {integrity: sha512-j4cNOiiUe7Sr7qU7nx9Z4+OW/bOiEu/SYS3obam9e3iSslS5d75v96UIBAF9KLk9TJ0uX8y0J5/K2aigF+ZqsA==}
+    engines: {node: '>=22.21.0 <23 || >=24.5.0'}
+
+  '@arcjet/env@1.16.0':
+    resolution: {integrity: sha512-q1YXJ9bC2riYtTFtjBZ6yWr63jPefzVpqDOzu6/SXaKprM6QeICXsFp4qSFLjuo8jhSI2TLYDIeH9SagU61BuA==}
+    engines: {node: '>=22.21.0 <23 || >=24.5.0'}
+
+  '@arcjet/headers@1.16.0':
+    resolution: {integrity: sha512-GJXfqdKpvX5LHC+acb3Dm6ToQUpN4bnnU+vyD0ogNSELW3lPUbPwqLT6hkxqJcUlR4YjcxYUkmwV9zeYzZ/65A==}
+    engines: {node: '>=22.21.0 <23 || >=24.5.0'}
+
+  '@arcjet/ip@1.16.0':
+    resolution: {integrity: sha512-TrMm1CXU93Nr5ED63xsZL+ir249/4ODffRQfQuoD6NnLUWW4r37DEvw8NfEb5VOzqhTKgNtCdt6+Ne7+F7UHBQ==}
+    engines: {node: '>=22.21.0 <23 || >=24.5.0'}
+
+  '@arcjet/logger@1.16.0':
+    resolution: {integrity: sha512-1G4KsKDFGt3cMBNEyg1MAhTjGjv5S1iU8ZAnEgzwMJbp2wFcPTdJCz3a/8RfRx4LUSPlOR1O5klYtH1ZzdYI0g==}
+    engines: {node: '>=22.21.0 <23 || >=24.5.0'}
+
+  '@arcjet/next@1.16.0':
+    resolution: {integrity: sha512-uJhEHYcflsTtJSB4XqTsGL7VZZO3mQ4mRIlVysKX9h1YI2drwT/o5bIct1fmOMv6cfIPH1yLNoiQYlX3Z8NaMw==}
+    engines: {node: '>=22.21.0 <23 || >=24.5.0'}
+    peerDependencies:
+      next: '>=13'
+
+  '@arcjet/protocol@1.16.0':
+    resolution: {integrity: sha512-ALIRweHjIZQxWtLUYfly6dEC5IKeSa1i8vG3GTqwhCI3pydeydsLqxvent6yFW/2yNX9Pt60djAm4wBE4NF8WQ==}
+    engines: {node: '>=22.21.0 <23 || >=24.5.0'}
+
+  '@arcjet/runtime@1.16.0':
+    resolution: {integrity: sha512-SFnYQ098VxuwZFnugvXowcemMlsGxOnCrT/u2+z4R6hN0zupNpio0Rt1j6VTAnTkv0SDbrC/BK+O57I2dZ8Dww==}
+    engines: {node: '>=22.21.0 <23 || >=24.5.0'}
+
+  '@arcjet/skills@1.16.0':
+    resolution: {integrity: sha512-6s4vpr6L4lxpqH4bvssDkh6YYf4iK6j7DY1UH7WgwZYQ5dpy+TwzavOWJV9tQOzlLdFU1jKela2ItSCT2Shl8A==}
+    engines: {node: '>=22.21.0 <23 || >=24.5.0'}
+
+  '@arcjet/sprintf@1.16.0':
+    resolution: {integrity: sha512-y7NlVFNgSwH39NuurBPhaNgOdKP5m8IgB4OGKEkQ/W5nQVlKLMA2LbN1SMUEeF+ZGDpMqyg1LhZzhKjFP0gpRg==}
+    engines: {node: '>=22.21.0 <23 || >=24.5.0'}
+
+  '@arcjet/stable-hash@1.16.0':
+    resolution: {integrity: sha512-YtsNGreOuJJdTPdtWdkKlW6crgf6X3wl44bdq1Yel3nsi4gOM3x2z2I4mTmLxYLtu1QNJ/h2kuGCJ4gjx3EkGQ==}
+    engines: {node: '>=22.21.0 <23 || >=24.5.0'}
+
+  '@arcjet/transport@1.16.0':
+    resolution: {integrity: sha512-wrf+uBIfCtpJQqokbw2ygpY6cUlkMrSvrZl0lK1im/0wGXc/05vO168IOmgSTDH2t3Tn9JYbQVGpsvJR2AOVxQ==}
+    engines: {node: '>=22.21.0 <23 || >=24.5.0'}
+
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
     engines: {node: '>=6.9.0'}
@@ -354,6 +426,9 @@ packages:
     resolution: {integrity: sha512-/XKpKDakL//LZ66bq1XsZOswuqeI5MZqPLDu18o3XdkU1fNJ7bdPtzgnc4ZNS+bBGHV0FJG8jjb8SwcC3nNVQQ==}
     engines: {node: '>=6.9.0'}
 
+  '@bufbuild/protobuf@2.17.0':
+    resolution: {integrity: sha512-hcPkSz6D7MiTU/5VBBhK+kxaYDoOdQ6yJRFJ3kS8Nydp+VZXfg1vrpABKPNod8bXMufsVCmiUJVIKFzCzta4uw==}
+
   '@clerk/backend@3.31.4':
     resolution: {integrity: sha512-lirZtugApjg9P5fQEWiR4iHZvOFc8Z4zQlTadu169C8GF/M5DMvTOEnlllFDZA823nipbHkJJf3I6/Wnromtbw==}
     engines: {node: '>=20.9.0'}
@@ -384,6 +459,24 @@ packages:
         optional: true
       react-dom:
         optional: true
+
+  '@connectrpc/connect-node@2.3.0':
+    resolution: {integrity: sha512-kcQgV4GqFIESsl0MOHInC9/wNYU4aJDvG1OfGR5Lq6/l0gqycSGqEk+fixXGcUtPLc8vJBgS4V1nTmWlh4o9gw==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      '@bufbuild/protobuf': ^2.7.0
+      '@connectrpc/connect': 2.3.0
+
+  '@connectrpc/connect-web@2.3.0':
+    resolution: {integrity: sha512-JPXOiWaVsj+ZwaXOQjwvhc0ORnkl0a1w36Qyl3j1WTuak6/VYyuWGl1Aq8I60gQfQRjsjLLFGr64tO0sjwstcg==}
+    peerDependencies:
+      '@bufbuild/protobuf': ^2.7.0
+      '@connectrpc/connect': 2.3.0
+
+  '@connectrpc/connect@2.3.0':
+    resolution: {integrity: sha512-rjAn8L9KbAZrkwiB8m1qzDsLs74hkYmwwM2iSWuxTPVOTRm/EZw31smKbQqPU50AXqJC5eKKpEnA6Uf/swQOgQ==}
+    peerDependencies:
+      '@bufbuild/protobuf': ^2.7.0
 
   '@electric-sql/pglite-pgvector@0.0.18':
     resolution: {integrity: sha512-G2d2rFS/rsRTXl7fvTuVIhD/fA6MIdDQB3l/xzIyRcDIVUl4KAcAEcqXPPTAXwJlqLViNGHFX+d1yn63V91xpQ==}
@@ -1440,6 +1533,10 @@ packages:
     resolution: {integrity: sha512-Cxwpt2SfTzTtXcfOlzGEee8O+c+MmUgGrNiBcXnuWxuFJHe6a5Hz7qwhwe5OgaSYI0IJvkLqWX1ASG+cJOkEiA==}
     engines: {node: '>=10'}
 
+  arcjet@1.16.0:
+    resolution: {integrity: sha512-oIsWK0Vo5GTTcsevsrAdN19YKefATpqyvXKr07Dc2E8povCOSifk1EsRieRwgLtVgdfFPLIxUZ01ttrVgrgsXQ==}
+    engines: {node: '>=22.21.0 <23 || >=24.5.0'}
+
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
 
@@ -2430,6 +2527,33 @@ packages:
     resolution: {integrity: sha512-XrsrhT5sybtKI6wakr2SPOlGZWWYbUXZ7a0jT8/QOeAPau+1X/bSegNe5YR75oJmEZQbKningirmGOEJCIk61Q==}
     engines: {node: '>=12.20.0'}
 
+  openai@7.62.0:
+    resolution: {integrity: sha512-dehzgY2anBfU3H+FfWHCVjhb9ZRYzahzNpvmMExTmMaeU11i51NJIMJPDctgLiP4+pCh53KIsLVQ66ucKyDNMA==}
+    engines: {node: '>=22.0.0'}
+    peerDependencies:
+      '@aws-sdk/credential-provider-node': '>=3.972.0 <4'
+      '@smithy/hash-node': '>=4.3.0 <5'
+      '@smithy/signature-v4': '>=5.4.0 <6'
+      google-auth-library: '>=9.15.1 <12'
+      undici: '>=5 <9'
+      ws: ^8.21.0
+      zod: ^3.25 || ^4.0
+    peerDependenciesMeta:
+      '@aws-sdk/credential-provider-node':
+        optional: true
+      '@smithy/hash-node':
+        optional: true
+      '@smithy/signature-v4':
+        optional: true
+      google-auth-library:
+        optional: true
+      undici:
+        optional: true
+      ws:
+        optional: true
+      zod:
+        optional: true
+
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
     engines: {node: '>= 0.8.0'}
@@ -2977,6 +3101,64 @@ snapshots:
 
   '@alloc/quick-lru@5.3.0': {}
 
+  '@arcjet/analyze-wasm@1.16.0': {}
+
+  '@arcjet/analyze@1.16.0':
+    dependencies:
+      '@arcjet/analyze-wasm': 1.16.0
+      '@arcjet/protocol': 1.16.0
+
+  '@arcjet/body@1.16.0': {}
+
+  '@arcjet/cache@1.16.0': {}
+
+  '@arcjet/duration@1.16.0': {}
+
+  '@arcjet/env@1.16.0': {}
+
+  '@arcjet/headers@1.16.0': {}
+
+  '@arcjet/ip@1.16.0': {}
+
+  '@arcjet/logger@1.16.0':
+    dependencies:
+      '@arcjet/sprintf': 1.16.0
+
+  '@arcjet/next@1.16.0(next@16.4.6(@babel/core@7.29.13(supports-color@7.2.0))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))':
+    dependencies:
+      '@arcjet/body': 1.16.0
+      '@arcjet/env': 1.16.0
+      '@arcjet/headers': 1.16.0
+      '@arcjet/ip': 1.16.0
+      '@arcjet/logger': 1.16.0
+      '@arcjet/protocol': 1.16.0
+      '@arcjet/transport': 1.16.0
+      arcjet: 1.16.0
+      next: 16.4.6(@babel/core@7.29.13(supports-color@7.2.0))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+
+  '@arcjet/protocol@1.16.0':
+    dependencies:
+      '@arcjet/cache': 1.16.0
+      '@bufbuild/protobuf': 2.17.0
+      '@connectrpc/connect': 2.3.0(@bufbuild/protobuf@2.17.0)
+
+  '@arcjet/runtime@1.16.0': {}
+
+  '@arcjet/skills@1.16.0': {}
+
+  '@arcjet/sprintf@1.16.0': {}
+
+  '@arcjet/stable-hash@1.16.0': {}
+
+  '@arcjet/transport@1.16.0':
+    dependencies:
+      '@arcjet/env': 1.16.0
+      '@arcjet/logger': 1.16.0
+      '@bufbuild/protobuf': 2.17.0
+      '@connectrpc/connect': 2.3.0(@bufbuild/protobuf@2.17.0)
+      '@connectrpc/connect-node': 2.3.0(@bufbuild/protobuf@2.17.0)(@connectrpc/connect@2.3.0(@bufbuild/protobuf@2.17.0))
+      '@connectrpc/connect-web': 2.3.0(@bufbuild/protobuf@2.17.0)(@connectrpc/connect@2.3.0(@bufbuild/protobuf@2.17.0))
+
   '@babel/code-frame@7.29.7':
     dependencies:
       '@babel/helper-validator-identifier': 7.29.7
@@ -3079,6 +3261,8 @@ snapshots:
       '@babel/helper-string-parser': 7.29.15
       '@babel/helper-validator-identifier': 7.29.7
 
+  '@bufbuild/protobuf@2.17.0': {}
+
   '@clerk/backend@3.31.4(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@clerk/shared': 4.48.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -3112,6 +3296,20 @@ snapshots:
     optionalDependencies:
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
+
+  '@connectrpc/connect-node@2.3.0(@bufbuild/protobuf@2.17.0)(@connectrpc/connect@2.3.0(@bufbuild/protobuf@2.17.0))':
+    dependencies:
+      '@bufbuild/protobuf': 2.17.0
+      '@connectrpc/connect': 2.3.0(@bufbuild/protobuf@2.17.0)
+
+  '@connectrpc/connect-web@2.3.0(@bufbuild/protobuf@2.17.0)(@connectrpc/connect@2.3.0(@bufbuild/protobuf@2.17.0))':
+    dependencies:
+      '@bufbuild/protobuf': 2.17.0
+      '@connectrpc/connect': 2.3.0(@bufbuild/protobuf@2.17.0)
+
+  '@connectrpc/connect@2.3.0(@bufbuild/protobuf@2.17.0)':
+    dependencies:
+      '@bufbuild/protobuf': 2.17.0
 
   '@electric-sql/pglite-pgvector@0.0.18(@electric-sql/pglite@0.5.17)':
     dependencies:
@@ -3915,6 +4113,17 @@ snapshots:
       color-convert: 2.0.1
 
   ansi-styles@5.2.0: {}
+
+  arcjet@1.16.0:
+    dependencies:
+      '@arcjet/analyze': 1.16.0
+      '@arcjet/cache': 1.16.0
+      '@arcjet/duration': 1.16.0
+      '@arcjet/headers': 1.16.0
+      '@arcjet/protocol': 1.16.0
+      '@arcjet/runtime': 1.16.0
+      '@arcjet/skills': 1.16.0
+      '@arcjet/stable-hash': 1.16.0
 
   argparse@2.0.1: {}
 
@@ -5092,6 +5301,11 @@ snapshots:
       es-object-atoms: 1.1.2
 
   obug@2.2.1: {}
+
+  openai@7.62.0(undici@8.13.1)(zod@4.6.7):
+    optionalDependencies:
+      undici: 8.13.1
+      zod: 4.6.7
 
   optionator@0.9.4:
     dependencies:

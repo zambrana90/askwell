@@ -14,11 +14,13 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@arcjet/next": "^1.16.0",
     "@askwell/db": "workspace:*",
     "@askwell/shared": "workspace:*",
     "@clerk/nextjs": "^7.10.7",
     "@supabase/supabase-js": "^2.119.2",
     "next": "^16.4.0",
+    "openai": "^7.62.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "server-only": "^0.0.1"

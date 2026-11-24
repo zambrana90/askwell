@@ -41,6 +41,7 @@ export default async function KnowledgePage({ params }: { params: Promise<{ id: 
       initialSources={sources}
       maxSources={PLAN_LIMITS[plan].knowledgeSources}
       limitMessage={knowledgeLimitMessage(plan)}
+      planName={plan === "pro" ? "Pro" : "Free"}
     />
   );
 }

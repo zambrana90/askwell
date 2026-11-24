@@ -49,7 +49,7 @@ describe("GET /api/widget/config", () => {
     });
     expect(eq).toHaveBeenCalledWith("public_key", KEY);
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
-    expect(res.headers.get("Cache-Control")).toBe("public, max-age=60");
+    expect(res.headers.get("Cache-Control")).toBe("public, no-cache");
     expect(res.headers.get("Vercel-CDN-Cache-Control")).toBe("no-store");
     expect(res.headers.get("CDN-Cache-Control")).toBe("no-store");
   });

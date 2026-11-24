@@ -243,3 +243,22 @@ test("subnav has Knowledge after Overview, before Conversations", () => {
   expect(links).toEqual(["Overview", "Knowledge", "Conversations", "Customize", "Install"]);
   expect(screen.getByRole("link", { name: "Knowledge" }).getAttribute("aria-current")).toBe("page");
 });
+
+test("sources past the plan limit show Not used for answers with a note and an upgrade link (Free)", () => {
+  const at = (n: number): KnowledgeSource => ({ ...src(`s${n}`, `Source ${n}`, "ready"), createdAt: `2026-11-0${n}T10:00:00+00:00` });
+  render(
+    <KnowledgeView projectId="p1" initialSources={[at(4), at(3), at(2), at(1)]} maxSources={3} limitMessage={MSG} planName="Free" />,
+  );
+  expect(screen.getAllByText("Not used for answers")).toHaveLength(1);
+  const row = screen.getByText("Source 4").closest("li")!;
+  expect(row.textContent).toContain("Not used for answers");
+  expect(row.textContent).toContain("Your Free plan uses 3 sources per project for answers. Upgrade or delete sources to use this one again.");
+  expect(row.querySelector('a[href="/dashboard/billing"]')).toBeTruthy();
+  expect(screen.getByText("Source 1").closest("li")!.textContent).not.toContain("Not used for answers");
+});
+
+test("nothing is paused within the source limit", () => {
+  view([src("1", "A", "ready"), src("2", "B", "ready")], 3);
+  expect(screen.queryByText("Not used for answers")).toBeNull();
+  expect(screen.queryByTestId("paused-note")).toBeNull();
+});

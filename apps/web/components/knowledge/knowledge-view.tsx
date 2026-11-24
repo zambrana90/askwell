@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
@@ -14,6 +15,7 @@ import type {
   PasteKnowledgeResponse,
   UploadUrlResponse,
 } from "@askwell/shared";
+import { pausedIds, pausedSourceNote, type PlanName } from "../../lib/plan/pause";
 import { ConfirmDialog } from "../projects/confirm-dialog";
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
@@ -26,6 +28,8 @@ type Props = {
   /** The plan's source limit, read on the server. The API stays the real check. */
   maxSources: number;
   limitMessage: string;
+  /** The plan's name, for the paused note. */
+  planName?: PlanName;
   /** How often to refresh while something is processing. Tests lower it. */
   pollMs?: number;
 };
@@ -49,7 +53,7 @@ const ACCEPT = [...Object.keys(KNOWLEDGE_FILE_MIME_TYPES).map((e) => `.${e}`)].j
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 
-export function KnowledgeView({ projectId, initialSources, maxSources, limitMessage, pollMs = 4000 }: Props) {
+export function KnowledgeView({ projectId, initialSources, maxSources, limitMessage, planName = "Free", pollMs = 4000 }: Props) {
   const router = useRouter();
   const [sources, setSources] = useState(initialSources);
   const [limitHit, setLimitHit] = useState(false);
@@ -86,6 +90,8 @@ export function KnowledgeView({ projectId, initialSources, maxSources, limitMess
 
   // One blocked state: the list says full, or the API just said plan_limit.
   const blocked = sources.length >= maxSources || limitHit;
+  // Extras after a downgrade are not used for answers. Same rule as match_chunks_active in SQL.
+  const paused = pausedIds(sources, maxSources);
   const busy = pasting || uploading;
   const base = `/api/projects/${projectId}/knowledge`;
 
@@ -280,8 +286,26 @@ export function KnowledgeView({ projectId, initialSources, maxSources, limitMess
                   <p className="mt-1 text-sm text-ink-muted">
                     {TYPE_LABEL[s.type]} · Added {formatDate(s.createdAt)}
                   </p>
+                  {paused.has(s.id) ? (
+                    <p data-testid="paused-note" className="mt-1 text-sm text-ink-muted">
+                      {pausedSourceNote(planName, maxSources)}{" "}
+                      {planName === "Free" ? (
+                        <Link href="/dashboard/billing" className="underline">
+                          Upgrade
+                        </Link>
+                      ) : null}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-3">
+                  {paused.has(s.id) ? (
+                    <span
+                      data-testid="paused-badge"
+                      className="rounded-full border border-glass-edge px-2.5 py-0.5 text-xs font-medium"
+                    >
+                      Not used for answers
+                    </span>
+                  ) : null}
                   <span
                     data-status={s.status}
                     className="rounded-full border border-glass-edge px-2.5 py-0.5 text-xs font-medium"

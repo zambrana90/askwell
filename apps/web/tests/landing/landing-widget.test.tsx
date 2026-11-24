@@ -47,7 +47,7 @@ describe("landingWidgetKey", () => {
 
 describe("LandingWidget", () => {
   test("renders the widget script tag with the key", () => {
-    const { container } = render(<LandingWidget widgetKey={KEY} />);
+    render(<LandingWidget widgetKey={KEY} />);
     const [tag] = scripts();
     expect(tag?.getAttribute("src")).toBe("/widget.js");
     expect(tag?.getAttribute("data-key")).toBe(KEY);

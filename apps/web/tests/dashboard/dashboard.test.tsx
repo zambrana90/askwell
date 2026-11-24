@@ -17,6 +17,12 @@ test("nav renders APP_NAME and the Projects link", () => {
   expect(projects.getAttribute("aria-current")).toBe("page");
 });
 
+test("nav has a Billing item that points to /dashboard/billing", () => {
+  expect(NAV_ITEMS.map((i) => i.label)).toEqual(["Projects", "Billing"]);
+  render(<DashboardNav appName={APP_NAME} items={NAV_ITEMS} userMenu={<span>user</span>} />);
+  expect(screen.getByRole("link", { name: "Billing" }).getAttribute("href")).toBe("/dashboard/billing");
+});
+
 test("loading fallback announces a status message", () => {
   render(<Loading />);
   expect(screen.getByRole("status").textContent).toBe("Loading projects…");

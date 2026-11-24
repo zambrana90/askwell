@@ -79,7 +79,7 @@ declare
 begin
   update public.projects
   set messages_used = case when period_start < v_month then 1 else messages_used + 1 end,
-      period_start = v_month
+      period_start = greatest(period_start, v_month)
   where id = p_project_id
     and ((period_start < v_month and p_limit >= 1) or (period_start >= v_month and messages_used < p_limit));
   return found;

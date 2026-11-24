@@ -103,6 +103,16 @@ describe("consume_message", () => {
     });
   });
 
+  it("never moves the period backward (a call that started before a month rollover)", async () => {
+    await withRollback(db, async (run) => {
+      // The stored period is newer than this call's `now()`, as after a concurrent rollover.
+      await run(service, `update projects set messages_used = 3, period_start = '2999-01-01Z' where id = $1`, [P1]);
+      expect((await run(service, CONSUME, [P1, 10]))[0]!.ok).toBe(true);
+      const [p] = await run(service, `select messages_used, period_start = '2999-01-01Z' as kept from projects where id = $1`, [P1]);
+      expect(p).toMatchObject({ messages_used: 4, kept: true });
+    });
+  });
+
   it("returns false for an unknown project", async () => {
     await withRollback(db, async (run) => {
       expect((await run(service, CONSUME, ["00000000-0000-0000-0000-0000000000ff", 5]))[0]!.ok).toBe(false);

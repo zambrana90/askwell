@@ -28,10 +28,17 @@ export async function init(script: HTMLScriptElement): Promise<HTMLElement | nul
     if (!response.ok) return null;
     const config = parseConfig(await response.json());
     if (!config) return null;
+    // A snippet in <head> can get its config back before <body> exists.
+    if (!document.body) await parsed();
     return render(appOrigin, key, config);
   } catch {
     return null;
   }
+}
+
+/** Resolves when the host page has been parsed, so <body> exists. */
+function parsed(): Promise<void> {
+  return new Promise((resolve) => document.addEventListener("DOMContentLoaded", () => resolve(), { once: true }));
 }
 
 function render(appOrigin: string, key: string, config: NonNullable<ReturnType<typeof parseConfig>>): HTMLElement {

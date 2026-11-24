@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { APP_NAME, MAX_MESSAGE_LENGTH, type WidgetConfig } from "@askwell/shared";
 import { listenForVisibility, postToHost } from "../../lib/embed/bridge";
-import { chatErrorMessage, sendMessage } from "../../lib/embed/chat";
+import { ChatError, chatErrorMessage, sendMessage } from "../../lib/embed/chat";
 import { getVisitorId } from "../../lib/embed/visitor";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
@@ -88,6 +88,8 @@ export function EmbedPanel({ publicKey, config, hostOrigin }: Props) {
       setMessages((prev) => [...prev, { id: nextId.current++, from: "bot", text: response.reply }]);
       if (!openRef.current) setUnread((count) => count + 1);
     } catch (caught) {
+      // The conversation is gone: the next message starts a new one.
+      if (caught instanceof ChatError && caught.code === "not_found") conversationId.current = undefined;
       setError(chatErrorMessage(caught));
     } finally {
       setTyping(false);

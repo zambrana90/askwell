@@ -129,6 +129,7 @@ describe("panel", () => {
   test.each([
     ["rate_limited", /too fast/i],
     ["quota_exceeded", /unavailable/i],
+    ["forbidden", /can't help with that/i],
   ] as const)("%s shows a friendly message", async (code, pattern) => {
     send.mockRejectedValue(new ChatError(code, "server detail that must not show"));
     render(panel());
@@ -137,6 +138,21 @@ describe("panel", () => {
     expect(alert.textContent).toMatch(pattern);
     expect(alert.textContent).not.toMatch(/server detail/);
     expect(screen.queryByTestId("typing")).toBeNull();
+  });
+
+  test("not_found clears the conversation id and shows the generic error", async () => {
+    send.mockResolvedValueOnce({ conversationId: "c1", reply: "ok" });
+    send.mockRejectedValueOnce(new ChatError("not_found"));
+    send.mockResolvedValueOnce({ conversationId: "c2", reply: "fresh" });
+    render(panel());
+    typeAndSend("one");
+    await screen.findByText("ok");
+    typeAndSend("two");
+    expect((await screen.findByRole("alert")).textContent).toMatch(/something went wrong/i);
+    typeAndSend("three");
+    await screen.findByText("fresh");
+    expect(send.mock.calls[1]?.[0].conversationId).toBe("c1");
+    expect(send.mock.calls[2]?.[0].conversationId).toBeUndefined();
   });
 
   test("an unknown error shows a generic message", async () => {

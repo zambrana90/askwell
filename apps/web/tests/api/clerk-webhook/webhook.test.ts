@@ -10,6 +10,29 @@ vi.mock("../../../lib/analytics/events", () => ({
   trackSignedUp: () => undefined,
 }));
 
+// The user's live subscription items, as Clerk's Backend API returns them.
+type LiveItem = { status: string; periodEnd: number | null; plan: { slug: string } | null };
+let liveItems: LiveItem[] = [];
+let clerkError: Error | null = null;
+const lookups = vi.fn();
+vi.mock("@clerk/nextjs/server", () => ({
+  clerkClient: async () => ({
+    billing: {
+      getUserBillingSubscription: async (userId: string) => {
+        lookups(userId);
+        if (clerkError) throw clerkError;
+        return { subscriptionItems: liveItems };
+      },
+    },
+  }),
+}));
+
+const live = (status: string, slug = "pro", periodEnd: number | null = Date.now() + 86_400_000): LiveItem => ({
+  status,
+  periodEnd,
+  plan: { slug },
+});
+
 // A small accounts table behind the service client, with the filters the code uses.
 const accounts = new Map<string, string>();
 let dbError: { message: string } | null = null;
@@ -45,6 +68,7 @@ vi.mock("../../../lib/supabase/service", () => ({
 }));
 
 import { POST } from "../../../app/api/clerk/webhook/route";
+import { planFromItems } from "../../../lib/billing/plan";
 
 const SECRET = `whsec_${Buffer.from("a test signing secret of 32 bytes").toString("base64")}`;
 
@@ -78,6 +102,9 @@ beforeEach(() => {
   accounts.set("user_1", "free");
   dbError = null;
   writes.mockClear();
+  lookups.mockClear();
+  liveItems = [live("active")];
+  clerkError = null;
   trackUpgraded.mockReset();
   vi.stubEnv("CLERK_WEBHOOK_SIGNING_SECRET", SECRET);
   vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -102,8 +129,9 @@ describe("POST /api/clerk/webhook", () => {
     expect(writes).not.toHaveBeenCalled();
   });
 
-  test("an active Pro item gives pro and sends upgraded once", async () => {
+  test("an active event with a live Pro item gives pro and sends upgraded once", async () => {
     expect((await POST(request(item("subscriptionItem.active")))).status).toBe(200);
+    expect(lookups.mock.calls).toEqual([["user_1"]]);
     expect(accounts.get("user_1")).toBe("pro");
     expect(trackUpgraded.mock.calls).toEqual([["user_1"]]);
   });
@@ -115,12 +143,27 @@ describe("POST /api/clerk/webhook", () => {
     expect(trackUpgraded).toHaveBeenCalledTimes(1);
   });
 
-  test("an ended Pro item gives free, also when replayed", async () => {
+  test("an ended event with no live Pro item gives free, also when replayed", async () => {
     accounts.set("user_1", "pro");
+    liveItems = [live("ended"), live("active", "free_user", null)];
     await POST(request(item("subscriptionItem.ended")));
     expect((await POST(request(item("subscriptionItem.ended")))).status).toBe(200);
     expect(accounts.get("user_1")).toBe("free");
     expect(trackUpgraded).not.toHaveBeenCalled();
+  });
+
+  test("a late active event doesn't bring Pro back after it ended", async () => {
+    liveItems = [live("ended")];
+    await POST(request(item("subscriptionItem.active")));
+    expect(accounts.get("user_1")).toBe("free");
+    expect(trackUpgraded).not.toHaveBeenCalled();
+  });
+
+  test("a late ended event keeps Pro while another Pro item is active", async () => {
+    accounts.set("user_1", "pro");
+    liveItems = [live("ended"), live("active")];
+    await POST(request(item("subscriptionItem.ended")));
+    expect(accounts.get("user_1")).toBe("pro");
   });
 
   test.each(["subscriptionItem.canceled", "subscriptionItem.pastDue", "subscriptionItem.upcoming", "subscription.active", "user.created"])(
@@ -130,6 +173,7 @@ describe("POST /api/clerk/webhook", () => {
       expect((await POST(request(item(type)))).status).toBe(200);
       expect(accounts.get("user_1")).toBe("pro");
       expect(writes).not.toHaveBeenCalled();
+      expect(lookups).not.toHaveBeenCalled();
     },
   );
 
@@ -149,11 +193,41 @@ describe("POST /api/clerk/webhook", () => {
     expect(trackUpgraded.mock.calls).toEqual([["user_new"]]);
   });
 
+  test("500 and nothing written when the Clerk lookup fails, so Clerk retries", async () => {
+    clerkError = new Error("clerk down");
+    expect((await POST(request(item("subscriptionItem.active")))).status).toBe(500);
+    expect(writes).not.toHaveBeenCalled();
+    expect(trackUpgraded).not.toHaveBeenCalled();
+  });
+
   test("500 on a database error, so Clerk retries", async () => {
     dbError = { message: "boom" };
     const res = await POST(request(item("subscriptionItem.active")));
     expect(res.status).toBe(500);
     expect((await res.json()).error.code).toBe("internal");
     expect(trackUpgraded).not.toHaveBeenCalled();
+  });
+});
+
+describe("planFromItems", () => {
+  const now = 1_000;
+  test.each([
+    ["active", live("active"), "pro"],
+    ["past due", live("past_due"), "pro"],
+    ["canceled, period still running", live("canceled", "pro", now + 1), "pro"],
+    ["canceled, period over", live("canceled", "pro", now), "free"],
+    ["canceled, no period end", live("canceled", "pro", null), "free"],
+    ["upcoming", live("upcoming"), "free"],
+    ["ended", live("ended"), "free"],
+    ["incomplete", live("incomplete"), "free"],
+    ["abandoned", live("abandoned"), "free"],
+    ["another plan", live("active", "free_user"), "free"],
+    ["no plan", { status: "active", periodEnd: null, plan: null }, "free"],
+  ])("%s", (_name, liveItem, expected) => {
+    expect(planFromItems([liveItem], now)).toBe(expected);
+  });
+
+  test("no items is free", () => {
+    expect(planFromItems([], now)).toBe("free");
   });
 });

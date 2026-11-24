@@ -1,7 +1,7 @@
 import { verifyWebhook } from "@clerk/nextjs/webhooks";
 import type { NextRequest } from "next/server";
 import { API_ERROR_STATUS, apiError, type ApiErrorCode } from "@askwell/shared";
-import { applyPlanChange, planChangeFor } from "../../../../lib/billing/plan";
+import { syncPlan, userToSync } from "../../../../lib/billing/plan";
 
 const fail = (code: ApiErrorCode, message: string) =>
   Response.json(apiError(code, message), { status: API_ERROR_STATUS[code] });
@@ -20,8 +20,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const change = planChangeFor(event);
-    if (change) await applyPlanChange(change);
+    const userId = userToSync(event);
+    if (userId) await syncPlan(userId);
     return Response.json({ received: true });
   } catch (err) {
     console.error("clerk webhook failed:", err instanceof Error ? err.message : "unknown error");

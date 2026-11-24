@@ -190,6 +190,50 @@ describe("match_chunks", () => {
   });
 });
 
+describe("match_chunks across projects (HNSW)", () => {
+  it("still finds a small project's chunks when a big project's chunks are nearer", async () => {
+    // Own database: the shared one holds dead HNSW entries from earlier rolled-back tests,
+    // which hide rows from an index scan and would make this test meaningless.
+    const own = await createTestDb();
+    try {
+      await own.exec(`
+        insert into accounts (clerk_user_id) values ('u1');
+        insert into projects (id, owner_id, name, public_key) values
+          ('${P1}', 'u1', 'One', 'pk1'), ('${P2}', 'u1', 'Two', 'pk2');
+      `);
+      const [big] = (await own.query<{ id: string }>(`insert into knowledge_sources (project_id, title, type, status) values ($1, 'big', 'text', 'ready') returning id`, [P2])).rows;
+      const [small] = (await own.query<{ id: string }>(`insert into knowledge_sources (project_id, title, type, status) values ($1, 'small', 'text', 'ready') returning id`, [P1])).rows;
+      const literal = (value: string) =>
+        `(select ('[' || string_agg(${value}, ',' order by i) || ']')::extensions.vector from generate_series(1, 1536) i)`;
+      // 200 chunks of P2 sit closer to the query than any chunk of P1 (more than ef_search = 40).
+      await own.query(
+        `insert into knowledge_chunks (project_id, source_id, content, embedding)
+         select $1, $2, 'big-' || g, ${literal("case when i = 1 then '1' when i = 2 then (g / 1000.0)::text else '0' end")}
+         from generate_series(1, 200) g`,
+        [P2, big!.id],
+      );
+      // P1's chunks are further from the query (cosine ~0.45 vs ~1).
+      await own.query(
+        `insert into knowledge_chunks (project_id, source_id, content, embedding)
+         select $1, $2, 'small-' || g, ${literal("case when i = 1 then '0.5' when i = g + 10 then '1' else '0' end")}
+         from generate_series(1, 2) g`,
+        [P1, small!.id],
+      );
+      await withRollback(own, async (run) => {
+        // Force the planner onto the shared HNSW index (it would otherwise pick the project_id
+        // btree for such a small table and hide the problem). Rolled back with the transaction.
+        await run({}, `drop index knowledge_chunks_project_id_idx`);
+        await run({}, `drop index knowledge_chunks_source_id_idx`);
+        await run({}, `set local enable_seqscan = off`);
+        const rows = await run(service, MATCH, [P1, vec(0), 2]);
+        expect(rows.map((r) => r.content).sort()).toEqual(["small-1", "small-2"]);
+      });
+    } finally {
+      await own.close();
+    }
+  });
+});
+
 describe("grants", () => {
   const calls: [string, unknown[]][] = [
     [RESERVE, [P1, "a", "text", 5]],

@@ -132,6 +132,10 @@ $$;
 -- ---------------------------------------------------------------------------
 -- match_chunks: nearest chunks by cosine distance, this project's `ready` sources only.
 -- similarity = 1 - cosine distance.
+-- hnsw.iterative_scan = strict_order: the HNSW index is shared by all projects, so a plain
+-- scan returns only the ef_search (40) nearest chunks overall, and a big project's chunks can
+-- push a small project's out before the project filter runs. Iterative scan keeps reading the
+-- index until enough rows of this project are found, still in exact distance order.
 -- ---------------------------------------------------------------------------
 create function public.match_chunks(
   p_project_id uuid,
@@ -143,6 +147,7 @@ language sql
 stable
 security invoker
 set search_path = ''
+set hnsw.iterative_scan = 'strict_order'
 as $$
   select c.id, c.source_id, c.content,
          (1 - (c.embedding operator(extensions.<=>) p_embedding))::float as similarity

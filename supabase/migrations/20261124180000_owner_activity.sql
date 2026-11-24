@@ -1,5 +1,5 @@
 -- owner_activity: the Conversations list (project.md §6.7). Per conversation of one project,
--- a preview of the first visitor message and the message count, newest first, at most 100.
+-- a preview of the first visitor message ('' if there is none) and the message count, newest first, at most 100.
 -- It exists so PostgREST aggregates can stay off (§9).
 -- SECURITY INVOKER: it runs as the caller, so RLS scopes it. Another owner's project returns
 -- zero rows. No new tables or columns.
@@ -13,11 +13,14 @@ as $$
   select c.id,
          c.visitor_id,
          c.created_at,
-         (select left(m.body, 120)
-            from public.messages m
-           where m.conversation_id = c.id and m.role = 'visitor'
-           order by m.created_at, m.id
-           limit 1) as preview,
+         coalesce(
+           (select left(m.body, 120)
+              from public.messages m
+             where m.conversation_id = c.id and m.role = 'visitor'
+             order by m.created_at, m.id
+             limit 1),
+           ''
+         ) as preview,
          (select count(*)::int
             from public.messages m
            where m.conversation_id = c.id) as message_count

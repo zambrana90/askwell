@@ -57,6 +57,21 @@ describe("owner_activity", () => {
     expect(byId[conv(3)]?.preview).toBe("x".repeat(120));
   });
 
+  it("a conversation with no visitor message has an empty preview, never null", async () => {
+    await db.exec(`
+      insert into conversations (id, project_id, visitor_id, created_at)
+        values ('${conv(50)}', '${PA}', 'empty', '2026-01-04T10:00:00Z'),
+               ('${conv(51)}', '${PA}', 'botonly', '2026-01-05T10:00:00Z');
+      insert into messages (conversation_id, role, body, created_at)
+        values ('${conv(51)}', 'bot', 'hi there', '2026-01-05T10:00:00Z');
+    `);
+    const rows = await queryAs(db, asA, ACTIVITY(PA));
+    const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+    expect(byId[conv(50)]).toMatchObject({ preview: "", message_count: 0 });
+    expect(byId[conv(51)]).toMatchObject({ preview: "", message_count: 1 });
+    await db.exec(`delete from conversations where id in ('${conv(50)}', '${conv(51)}')`);
+  });
+
   it("counts every message, bot and visitor", async () => {
     const rows = await queryAs(db, asA, ACTIVITY(PA));
     const counts = Object.fromEntries(rows.map((r) => [r.id, r.message_count]));

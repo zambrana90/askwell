@@ -48,6 +48,13 @@ export async function GET(request: Request) {
   if (!config) return fail("not_found", "Unknown key.");
 
   return NextResponse.json(config, {
-    headers: { ...CORS_HEADERS, "Cache-Control": "public, max-age=60" },
+    headers: {
+      ...CORS_HEADERS,
+      // Browsers may cache for a minute. The Vercel CDN must not: a cached hit never
+      // reaches the function, so the Arcjet rate limit would never run.
+      "Cache-Control": "public, max-age=60",
+      "Vercel-CDN-Cache-Control": "no-store",
+      "CDN-Cache-Control": "no-store",
+    },
   });
 }

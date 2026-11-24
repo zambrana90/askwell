@@ -137,6 +137,7 @@ $$;
 -- push a small project's out before the project filter runs. Iterative scan keeps reading the
 -- index until enough rows of this project are found, still in exact distance order.
 -- ---------------------------------------------------------------------------
+select '[1]'::extensions.vector; -- loads pgvector's library so hnsw.* can be set below
 create function public.match_chunks(
   p_project_id uuid,
   p_embedding extensions.vector(1536),

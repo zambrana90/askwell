@@ -2,6 +2,7 @@
 // Source checks that keep project.md §9 true as code is added.
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import ts from "typescript";
 import { describe, expect, test } from "vitest";
 
 const ROOT = path.resolve(__dirname, "../../../..");
@@ -20,6 +21,52 @@ const files = [
 
 const read = (file: string) => readFileSync(path.join(ROOT, file), "utf8");
 const filesMatching = (pattern: RegExp) => files.filter((file) => pattern.test(read(file))).sort();
+
+const RAW_HTML = /dangerouslySetInnerHTML|\.(inner|outer)HTML\b|insertAdjacentHTML|document\.write\(/;
+
+/**
+ * Each `addEventListener("message", ...)` in a file, and whether its own callback starts with
+ * `if (... event.origin !== x ...) return`. A callback defined in another file counts as
+ * unguarded.
+ */
+function messageListeners(file: string, code: string): { file: string; line: number; guarded: boolean }[] {
+  const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const functions = new Map<string, ts.FunctionLikeDeclaration>();
+  const calls: ts.CallExpression[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isFunctionDeclaration(node) && node.name) functions.set(node.name.text, node);
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+      const value = node.initializer;
+      if (ts.isArrowFunction(value) || ts.isFunctionExpression(value)) functions.set(node.name.text, value);
+    }
+    if (ts.isCallExpression(node)) {
+      const [type] = node.arguments;
+      const name = ts.isPropertyAccessExpression(node.expression) ? node.expression.name.text : node.expression.getText();
+      if (name === "addEventListener" && type && ts.isStringLiteralLike(type) && type.text === "message") calls.push(node);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+
+  return calls.map((call) => {
+    const callback = call.arguments[1];
+    const fn =
+      callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback))
+        ? callback
+        : callback && ts.isIdentifier(callback)
+          ? functions.get(callback.text)
+          : undefined;
+    const event = fn?.parameters[0]?.name.getText();
+    const first = fn?.body && ts.isBlock(fn.body) ? fn.body.statements[0] : undefined;
+    const guarded =
+      !!first &&
+      ts.isIfStatement(first) &&
+      ts.isReturnStatement(first.thenStatement) &&
+      // An `||` chain: a foreign origin always returns.
+      first.expression.getText().split("||").some((part) => part.trim().startsWith(`${event}.origin !== `));
+    return { file, line: source.getLineAndCharacterOfPosition(call.getStart()).line + 1, guarded };
+  });
+}
 
 describe("§9 source rules", () => {
   test("the walker finds the sources", () => {
@@ -62,12 +109,12 @@ describe("§9 source rules", () => {
   });
 
   test("the only raw HTML is the constant theme script", () => {
-    expect(filesMatching(/dangerouslySetInnerHTML|\.(inner|outer)HTML\b|insertAdjacentHTML|document\.write\(/)).toEqual([
-      "apps/web/app/dashboard/layout.tsx",
-    ]);
-    expect(read("apps/web/app/dashboard/layout.tsx").match(/dangerouslySetInnerHTML=\{[^\n]*/g)).toEqual([
-      "dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />",
-    ]);
+    const layout = "apps/web/app/dashboard/layout.tsx";
+    expect(filesMatching(RAW_HTML)).toEqual([layout]);
+    // Take out the one allowed expression: nothing else in that file may write HTML.
+    const allowed = "dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}";
+    expect(read(layout)).toContain(allowed);
+    expect(read(layout).replace(allowed, "")).not.toMatch(RAW_HTML);
   });
 
   test("postMessage is only sent from the two bridge files, never to any origin", () => {
@@ -76,10 +123,22 @@ describe("§9 source rules", () => {
     for (const file of senders) expect(read(file)).not.toMatch(/\.postMessage\([^;]*["'`]\*["'`]/);
   });
 
-  test("every message listener checks event.origin", () => {
-    const listeners = filesMatching(/addEventListener\(\s*["']message["']/);
-    expect(listeners).toEqual(["apps/web/lib/embed/bridge.ts", "apps/widget/src/widget.ts"]);
-    for (const file of listeners) expect(read(file)).toMatch(/event\.origin !== \w+/);
+  test("every message listener checks event.origin before anything else", () => {
+    const listeners = files.flatMap((file) => messageListeners(file, read(file)));
+    expect(listeners.map((l) => l.file).sort()).toEqual(["apps/web/lib/embed/bridge.ts", "apps/widget/src/widget.ts"]);
+    expect(listeners.filter((l) => !l.guarded)).toEqual([]);
+    expect(filesMatching(/\bonmessage\s*=/)).toEqual([]);
+  });
+
+  test("the listener check judges each listener on its own", () => {
+    const source = `
+      const handler = (e: MessageEvent) => { if (e.origin !== host) return; use(e.data); };
+      window.addEventListener("message", handler);
+      window.addEventListener("message", (event) => { use(event.data); });
+      window.addEventListener("message", (event) => { use(event.data); if (event.origin !== host) return; });
+      window.addEventListener("message", imported);
+    `;
+    expect(messageListeners("x.ts", source).map((l) => l.guarded)).toEqual([true, false, false, false]);
   });
 
   test("Storage files never get a public URL", () => {

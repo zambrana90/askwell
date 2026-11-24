@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
+const trackKnowledgeAdded = vi.fn();
+vi.mock("../../../lib/analytics/events", () => ({
+  trackKnowledgeAdded: (...a: unknown[]) => trackKnowledgeAdded(...a),
+}));
+
 const authMock = vi.fn();
 vi.mock("@clerk/nextjs/server", () => ({ auth: () => authMock() }));
 
@@ -150,6 +155,7 @@ const uploadBody = { fileName: "guide.pdf", size: 1000, mime: "application/pdf" 
 beforeEach(() => {
   counter = 0;
   afterTasks.length = 0;
+  trackKnowledgeAdded.mockReset();
   processSource.mockReset().mockResolvedValue({ status: "ready", chunks: 1 });
   authMock.mockReset().mockResolvedValue({ userId: "user_1" });
   state.projects = [projectRow(PROJECT, "user_1"), projectRow(OTHER_PROJECT, "user_2")];
@@ -421,5 +427,33 @@ describe("DELETE /api/knowledge/:id", () => {
     state.sources = [sourceRow({ type: "text", storage_key: null, status: "ready" })];
     expect((await del(SID)).status).toBe(200);
     expect(state.sources).toHaveLength(0);
+  });
+});
+
+describe("knowledge_added", () => {
+  const SOURCE = "11111111-1111-4111-8111-111111111111";
+  const storageKey = `${PROJECT}/${SOURCE}.pdf`;
+
+  test("once per successful paste, with ids and the type only", async () => {
+    await paste(post({ title: "SECRET title", text: "SECRET text" }), ctx(PROJECT));
+    expect(trackKnowledgeAdded.mock.calls).toEqual([["user_1", PROJECT, "text"]]);
+  });
+
+  test("once on finalize success; not again on a repeat", async () => {
+    state.sources = [sourceRow({})];
+    state.files.set(storageKey, bytes("%PDF-1.4 hello"));
+    await finalize(post({ sourceId: SOURCE }), ctx(PROJECT));
+    await finalize(post({ sourceId: SOURCE }), ctx(PROJECT));
+    expect(trackKnowledgeAdded.mock.calls).toEqual([["user_1", PROJECT, "pdf"]]);
+  });
+
+  test("not sent on a refused paste, an upload reservation or an invalid file", async () => {
+    await paste(post({ title: "" }), ctx(PROJECT));
+    await paste(post({ title: "t", text: "x" }), ctx(OTHER_PROJECT));
+    await uploadUrl(post(uploadBody), ctx(PROJECT));
+    state.sources = [sourceRow({})];
+    state.files.set(storageKey, bytes("not a pdf"));
+    expect((await finalize(post({ sourceId: SOURCE }), ctx(PROJECT))).status).toBe(400);
+    expect(trackKnowledgeAdded).not.toHaveBeenCalled();
   });
 });

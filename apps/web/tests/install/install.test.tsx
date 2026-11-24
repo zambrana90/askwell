@@ -2,7 +2,10 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+const trackSnippetCopied = vi.fn();
+vi.mock("../../lib/analytics/client", () => ({ trackSnippetCopied: (id: string) => trackSnippetCopied(id) }));
 vi.mock("next/navigation", () => ({
+  useParams: () => ({ id: "5f0c2f0e-8a3a-4a53-9b0e-3a6f1d1a2b3c" }),
   notFound: () => {
     throw new Error("NEXT_NOT_FOUND");
   },
@@ -32,6 +35,7 @@ const project = {
 };
 
 beforeEach(() => {
+  trackSnippetCopied.mockReset();
   loadOwnedProject.mockReset();
   headerValues.current = {};
   vi.unstubAllEnvs();
@@ -132,6 +136,7 @@ describe("InstallSnippet", () => {
     fireEvent.click(screen.getByRole("button", { name: "Copy snippet" }));
     expect(await screen.findByRole("button", { name: "Copied" })).toBeTruthy();
     expect(writeText).toHaveBeenCalledWith(snippet);
+    expect(trackSnippetCopied.mock.calls).toEqual([[ID]]); // snippet_copied, once
     expect(screen.getByRole("status").textContent).toContain("Copied");
   });
 
@@ -158,6 +163,7 @@ describe("InstallSnippet", () => {
     await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/press Ctrl\+C/));
     expect(window.getSelection()?.toString()).toBe(snippet);
     expect(screen.getByRole("button", { name: "Copy snippet" })).toBeTruthy();
+    expect(trackSnippetCopied).not.toHaveBeenCalled();
   });
 
   test("no Clipboard API at all falls back the same way", async () => {

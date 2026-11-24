@@ -36,6 +36,7 @@
     "@vitejs/plugin-react": "^6.3.0",
     "eslint-config-next": "^16.4.0",
     "jsdom": "^31.0.0",
+    "svix": "^2.11.1",
     "tailwindcss": "^4.3.0"
   }
 }

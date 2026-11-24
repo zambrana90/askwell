@@ -282,7 +282,7 @@ export function KnowledgeView({ projectId, initialSources, maxSources, limitMess
               <Panel className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   {/* Text only: titles are owner input and never rendered as HTML. */}
-                  <p className="truncate font-medium">{s.title}</p>
+                  <p className="font-medium wrap-anywhere">{s.title}</p>
                   <p className="mt-1 text-sm text-ink-muted">
                     {TYPE_LABEL[s.type]} · Added {formatDate(s.createdAt)}
                   </p>

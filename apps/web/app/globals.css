@@ -11,6 +11,7 @@
  */
 :root,
 .theme-light {
+  color-scheme: light;
   --canvas: #f4f4f5;
   --ink: #0a0a0a;
   --ink-muted: #52525b;
@@ -23,6 +24,7 @@
 
 .theme-dark,
 html[data-theme="dark"] .theme-auto {
+  color-scheme: dark;
   --canvas: #050505;
   --ink: #fafafa;
   --ink-muted: #a1a1aa;
@@ -35,6 +37,7 @@ html[data-theme="dark"] .theme-auto {
 
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) .theme-auto {
+    color-scheme: dark;
     --canvas: #050505;
     --ink: #fafafa;
     --ink-muted: #a1a1aa;
@@ -44,6 +47,17 @@ html[data-theme="dark"] .theme-auto {
     --accent: #fafafa;
     --accent-ink: #0a0a0a;
   }
+}
+
+/*
+ * Aliases for third-party widgets (Clerk's pricing table sets its own --accent on its elements).
+ * Resolved here, on the themed element, so they follow light and dark.
+ */
+.theme-light,
+.theme-dark,
+.theme-auto {
+  --brand: var(--accent);
+  --brand-ink: var(--accent-ink);
 }
 
 @theme inline {
@@ -60,6 +74,11 @@ html[data-theme="dark"] .theme-auto {
 @theme {
   --radius-glass: 1rem;
   --blur-glass: 16px;
+}
+
+input[type="radio"],
+input[type="checkbox"] {
+  accent-color: var(--accent);
 }
 
 body {

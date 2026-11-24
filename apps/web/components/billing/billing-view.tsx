@@ -6,13 +6,34 @@ import { useEffect, useState } from "react";
 import type { Plan } from "@askwell/shared";
 import { Button } from "../ui/button";
 import { Panel } from "../ui/panel";
-import { Spinner } from "../ui/spinner";
+import { Skeleton, Spinner } from "../ui/spinner";
 import { PLAN_NAME, planIncludes, priceLabel } from "./plan-summary";
 
 /** Where Clerk sends the user after a checkout. The page then waits for the webhook. */
 export const CHECKOUT_DONE_URL = "/dashboard/billing?checkout=done";
 export const POLL_INTERVAL_MS = 2000;
 export const POLL_MAX_MS = 30_000;
+
+/** Clerk's table follows the dashboard's light and dark tokens. */
+const PRICING_APPEARANCE = {
+  variables: {
+    colorBackground: "var(--canvas)",
+    colorForeground: "var(--ink)",
+    colorMutedForeground: "var(--ink-muted)",
+    colorNeutral: "var(--ink)",
+    colorPrimary: "var(--brand)",
+    colorPrimaryForeground: "var(--brand-ink)",
+  },
+};
+
+const pricingFallback = (
+  <div>
+    <p role="status" className="sr-only">
+      Loading plans…
+    </p>
+    <Skeleton className="h-48 w-full" />
+  </div>
+);
 
 type Props = {
   /** Read on the server from `accounts`. The webhook is what changes it. */
@@ -83,7 +104,11 @@ export function BillingView({ plan, checkoutDone = false, pollMs = POLL_INTERVAL
           <h2 id="upgrade-heading" className="text-lg font-semibold">
             Upgrade
           </h2>
-          <PricingTable newSubscriptionRedirectUrl={CHECKOUT_DONE_URL} />
+          <PricingTable
+            newSubscriptionRedirectUrl={CHECKOUT_DONE_URL}
+            appearance={PRICING_APPEARANCE}
+            fallback={pricingFallback}
+          />
         </section>
       ) : null}
     </div>

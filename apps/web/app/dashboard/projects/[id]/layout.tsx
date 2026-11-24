@@ -17,10 +17,10 @@ export default async function ProjectLayout({
 
   return (
     <>
-      <Link href="/dashboard" className="text-sm text-ink-muted hover:text-ink">
+      <Link href="/dashboard" className="inline-flex min-h-10 items-center text-sm text-ink-muted hover:text-ink">
         ← Projects
       </Link>
-      <h1 className="mb-4 mt-2 truncate text-2xl font-semibold">{project.name}</h1>
+      <h1 className="mb-4 text-2xl font-semibold wrap-anywhere">{project.name}</h1>
       <ProjectSubnav projectId={project.id} />
       {children}
     </>

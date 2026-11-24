@@ -64,7 +64,7 @@ export function ThemeToggle() {
           aria-label={LABELS[value]}
           title={LABELS[value]}
           onClick={() => select(value)}
-          className="inline-flex size-9 items-center justify-center rounded-glass text-ink-muted hover:text-ink aria-checked:bg-accent aria-checked:text-accent-ink"
+          className="inline-flex size-10 items-center justify-center rounded-glass text-ink-muted hover:text-ink aria-checked:bg-accent aria-checked:text-accent-ink"
         >
           <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d={ICONS[value]} />

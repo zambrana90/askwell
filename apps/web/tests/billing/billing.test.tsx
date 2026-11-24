@@ -58,7 +58,7 @@ describe("BillingView", () => {
     render(<BillingView plan="free" />);
     expect(screen.getByTestId("current-plan").textContent).toBe("Free");
     expect(screen.getByTestId("pricing-table")).toBeTruthy();
-    expect(pricingTable).toHaveBeenCalledWith({ newSubscriptionRedirectUrl: CHECKOUT_DONE_URL });
+    expect(pricingTable).toHaveBeenCalledWith(expect.objectContaining({ newSubscriptionRedirectUrl: CHECKOUT_DONE_URL }));
     expect(screen.queryByRole("button", { name: "Manage subscription" })).toBeNull();
     expect(screen.queryByText("Updating your plan…")).toBeNull();
   });

@@ -12,7 +12,7 @@ export default function ConversationNotFound() {
       title="Conversation not found"
       description="It may have been deleted, or it isn't yours."
       action={
-        <Link href={`/dashboard/projects/${id}/conversations`} className="text-sm underline">
+        <Link href={`/dashboard/projects/${id}/conversations`} className="inline-flex min-h-10 items-center text-sm underline">
           Back to conversations
         </Link>
       }

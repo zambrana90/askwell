@@ -206,7 +206,7 @@ export function ProjectsView({ initialProjects, maxProjects, messagesPerMonth, l
                     <div className="min-w-0">
                       <Link
                         href={`/dashboard/projects/${p.id}`}
-                        className="block truncate font-medium hover:underline"
+                        className="flex min-h-10 items-center font-medium wrap-anywhere hover:underline"
                       >
                         {p.name}
                       </Link>

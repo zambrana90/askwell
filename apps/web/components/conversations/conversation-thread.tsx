@@ -12,11 +12,11 @@ export function ConversationThread({ projectId, thread }: Props) {
     <section aria-labelledby="thread-heading">
       <Link
         href={`/dashboard/projects/${projectId}/conversations`}
-        className="text-sm text-ink-muted hover:text-ink"
+        className="inline-flex min-h-10 items-center text-sm text-ink-muted hover:text-ink"
       >
         ← Conversations
       </Link>
-      <div className="mb-4 mt-2 flex items-center justify-between gap-3">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <h2 id="thread-heading" className="truncate text-lg font-semibold">
           Visitor {shortVisitorId(conversation.visitorId)}
         </h2>

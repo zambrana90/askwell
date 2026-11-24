@@ -2,6 +2,6 @@
 
 import { ErrorState } from "../../components/ui/error-state";
 
-export default function DashboardError({ reset }: { error: Error; reset: () => void }) {
-  return <ErrorState onRetry={reset} />;
+export default function DashboardError({ retry }: { error: Error; retry: () => void }) {
+  return <ErrorState onRetry={retry} />;
 }

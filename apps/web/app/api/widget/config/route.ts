@@ -7,7 +7,7 @@ import {
   type WidgetConfigResponse,
 } from "@askwell/shared";
 import { protectConfig } from "../../../../lib/security/arcjet";
-import { getWidgetConfigByKey } from "../../../../lib/widget/config";
+import { PausedProjectError, getWidgetConfigByKey } from "../../../../lib/widget/config";
 
 // Public route: any origin, no credentials (project.md §9).
 const CORS_HEADERS = {
@@ -42,7 +42,9 @@ export async function GET(request: Request) {
   let config: WidgetConfigResponse | null;
   try {
     config = await getWidgetConfigByKey(parsed.data.key);
-  } catch {
+  } catch (err) {
+    // A paused project has no widget: the loader renders nothing on any error.
+    if (err instanceof PausedProjectError) return fail("payment_required", "This widget is unavailable.");
     return fail("internal", "Something went wrong.");
   }
   if (!config) return fail("not_found", "Unknown key.");

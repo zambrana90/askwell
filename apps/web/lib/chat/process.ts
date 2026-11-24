@@ -78,9 +78,16 @@ export async function processChat(request: Request): Promise<WidgetChatResponse>
     if (!conversation) throw new ChatFailure("not_found", "Unknown conversation.");
   }
 
-  // 4. Plan from the server, then count the message before any OpenAI call.
+  // 4. Plan from the server. A paused project (an extra after a downgrade) answers nothing:
+  // 402 before anything is counted, saved or sent to OpenAI. Then count the message.
   const account = Array.isArray(project.accounts) ? project.accounts[0] : project.accounts;
   const plan: Plan = account?.plan === "pro" ? "pro" : "free";
+  const { data: active, error: activeError } = await db.rpc("project_is_active", {
+    p_project_id: project.id,
+    p_max_projects: PLAN_LIMITS[plan].projects,
+  });
+  if (activeError) throw new Error(`project_is_active failed: ${activeError.message}`);
+  if (!active) throw new ChatFailure("payment_required", "Chat is unavailable for this project.");
   const { data: counted, error: consumeError } = await db.rpc("consume_message", {
     p_project_id: project.id,
     p_limit: PLAN_LIMITS[plan].messagesPerMonth,
@@ -93,14 +100,16 @@ export async function processChat(request: Request): Promise<WidgetChatResponse>
   const onCall = (call: AiCall) => calls.push(call);
   let savedConversationId: string | undefined;
   try {
-    // 5. Retrieve: top chunks of this project's ready sources.
+    // 5. Retrieve: top chunks of this project's ready sources, within the plan's source limit
+    // (sources past it are paused and never used for answers).
     const embedding = await embedQuery(message, onCall);
-    const { data: matches, error: matchError } = await db.rpc("match_chunks", {
+    const { data: matches, error: matchError } = await db.rpc("match_chunks_active", {
       p_project_id: project.id,
       p_embedding: JSON.stringify(embedding),
       p_match_count: MATCH_COUNT,
+      p_max_sources: PLAN_LIMITS[plan].knowledgeSources,
     });
-    if (matchError) throw new Error(`match_chunks failed: ${matchError.message}`);
+    if (matchError) throw new Error(`match_chunks_active failed: ${matchError.message}`);
     const chunks = (matches ?? []).map((m) => m.content);
 
     // 6. History: the last 6 messages of this conversation, oldest first.

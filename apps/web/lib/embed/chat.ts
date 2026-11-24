@@ -58,7 +58,7 @@ export async function sendMessage(req: WidgetChatRequest): Promise<WidgetChatRes
 export function chatErrorMessage(error: unknown): string {
   const code = error instanceof ChatError ? error.code : null;
   if (code === "rate_limited") return "You're sending messages too fast. Please wait a moment and try again.";
-  if (code === "quota_exceeded") return "This chat is unavailable right now. Please try again later.";
+  if (code === "quota_exceeded" || code === "payment_required") return "This chat is unavailable right now. Please try again later.";
   if (code === "forbidden") return "Sorry, I can't help with that.";
   return "Something went wrong. Please try again.";
 }

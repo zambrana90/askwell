@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { DEFAULT_WIDGET_CONFIG } from "@askwell/shared";
+import { DEFAULT_WIDGET_CONFIG, PLAN_LIMITS } from "@askwell/shared";
 
 vi.mock("server-only", () => ({}));
 
@@ -7,7 +7,8 @@ const maybeSingle = vi.fn();
 const eq = vi.fn(() => ({ maybeSingle }));
 const select = vi.fn(() => ({ eq }));
 const from = vi.fn(() => ({ select }));
-vi.mock("../../../lib/supabase/service", () => ({ createServiceClient: () => ({ from }) }));
+const rpc = vi.fn();
+vi.mock("../../../lib/supabase/service", () => ({ createServiceClient: () => ({ from, rpc }) }));
 
 const protectConfig = vi.fn();
 vi.mock("../../../lib/security/arcjet", () => ({ protectConfig: (...a: unknown[]) => protectConfig(...a) }));
@@ -24,12 +25,13 @@ const saved = {
   show_badge: false,
 };
 const call = (qs: string) => GET(new Request(`http://localhost/api/widget/config${qs}`));
-const row = (plan: string) => ({ data: { widget_configs: saved, accounts: { plan } }, error: null });
+const row = (plan: string) => ({ data: { id: "p1", widget_configs: saved, accounts: { plan } }, error: null });
 
 beforeEach(() => {
   protectConfig.mockReset();
   protectConfig.mockResolvedValue("allow");
   maybeSingle.mockReset();
+  rpc.mockReset().mockResolvedValue({ data: true, error: null });
   from.mockClear();
   eq.mockClear();
 });
@@ -102,5 +104,29 @@ describe("GET /api/widget/config", () => {
     expect(res.headers.get("access-control-allow-origin")).toBe("*");
     expect((await res.json()).error.code).toBe("rate_limited");
     expect(from).not.toHaveBeenCalled();
+  });
+
+  test("a paused project: 402 payment_required with CORS headers (the loader renders nothing on any error)", async () => {
+    maybeSingle.mockResolvedValue(row("free"));
+    rpc.mockResolvedValue({ data: false, error: null });
+    const res = await call(`?key=${KEY}`);
+    expect(res.status).toBe(402);
+    expect(res.headers.get("access-control-allow-origin")).toBe("*");
+    expect((await res.json()).error.code).toBe("payment_required");
+  });
+
+  test("the plan's project limit is passed to project_is_active", async () => {
+    for (const plan of ["free", "pro"] as const) {
+      rpc.mockClear();
+      maybeSingle.mockResolvedValue(row(plan));
+      await call(`?key=${KEY}`);
+      expect(rpc).toHaveBeenCalledWith("project_is_active", { p_project_id: "p1", p_max_projects: PLAN_LIMITS[plan].projects });
+    }
+  });
+
+  test("a project_is_active error is a 500, not a widget", async () => {
+    maybeSingle.mockResolvedValue(row("pro"));
+    rpc.mockResolvedValue({ data: null, error: { message: "boom" } });
+    expect((await call(`?key=${KEY}`)).status).toBe(500);
   });
 });

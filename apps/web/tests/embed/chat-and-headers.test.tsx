@@ -43,6 +43,7 @@ test("network errors, junk bodies and unknown codes become ChatError(internal)",
 test("chatErrorMessage maps codes to friendly text", () => {
   expect(chatErrorMessage(new ChatError("rate_limited"))).toMatch(/too fast/i);
   expect(chatErrorMessage(new ChatError("quota_exceeded"))).toMatch(/unavailable/i);
+  expect(chatErrorMessage(new ChatError("payment_required"))).toBe(chatErrorMessage(new ChatError("quota_exceeded")));
   expect(chatErrorMessage(new ChatError("forbidden"))).toBe("Sorry, I can't help with that.");
   expect(chatErrorMessage(new ChatError("internal"))).toMatch(/went wrong/i);
   expect(chatErrorMessage("x")).toMatch(/went wrong/i);

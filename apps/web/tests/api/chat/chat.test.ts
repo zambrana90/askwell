@@ -61,8 +61,9 @@ beforeEach(() => {
   tables.conversations = { data: { id: CONV }, error: null };
   tables.messages = { data: [], error: null };
   rpc.mockReset().mockImplementation(async (name: string) => {
+    if (name === "project_is_active") return { data: true, error: null };
     if (name === "consume_message") return { data: true, error: null };
-    if (name === "match_chunks") return { data: [{ content: "chunk A" }, { content: "chunk B" }], error: null };
+    if (name === "match_chunks_active") return { data: [{ content: "chunk A" }, { content: "chunk B" }], error: null };
     return { data: CONV, error: null };
   });
 });
@@ -117,7 +118,7 @@ describe("POST /api/widget/chat", () => {
   });
 
   test("429 quota_exceeded: no OpenAI call", async () => {
-    rpc.mockImplementation(async () => ({ data: false, error: null }));
+    rpc.mockImplementation(async (name: string) => ({ data: name !== "consume_message", error: null }));
     const res = await post(body());
     expect(res.status).toBe(429);
     expect((await res.json()).error.code).toBe("quota_exceeded");
@@ -138,12 +139,46 @@ describe("POST /api/widget/chat", () => {
     });
   });
 
+  test("a paused project: 402 payment_required, nothing counted, saved or sent to OpenAI", async () => {
+    rpc.mockImplementation(async (name: string) => ({ data: name === "project_is_active" ? false : true, error: null }));
+    const res = await post(body());
+    expect(res.status).toBe(402);
+    expect((await res.json()).error.code).toBe("payment_required");
+    expect(rpcNames()).toEqual(["project_is_active"]);
+    expect(embedQuery).not.toHaveBeenCalled();
+    expect(answerQuestion).not.toHaveBeenCalled();
+    expect(captureServer).not.toHaveBeenCalled(); // no AI trace, no events
+  });
+
+  test("the plan's limits are passed on: project limit to project_is_active, source limit to match_chunks_active", async () => {
+    for (const plan of ["free", "pro"] as const) {
+      rpc.mockClear();
+      tables.projects = { data: { id: "p1", accounts: { plan } }, error: null };
+      await post(body());
+      expect(rpc).toHaveBeenCalledWith("project_is_active", { p_project_id: "p1", p_max_projects: PLAN_LIMITS[plan].projects });
+      expect(rpc).toHaveBeenCalledWith(
+        "match_chunks_active",
+        expect.objectContaining({ p_max_sources: PLAN_LIMITS[plan].knowledgeSources }),
+      );
+    }
+  });
+
+  test("a project_is_active error: 500 internal, nothing counted", async () => {
+    rpc.mockImplementation(async (name: string) =>
+      name === "project_is_active" ? { data: null, error: { message: "secret detail" } } : { data: true, error: null },
+    );
+    const res = await post(body());
+    expect(res.status).toBe(500);
+    expect(JSON.stringify(await res.json())).not.toMatch(/secret/);
+    expect(rpcNames()).toEqual(["project_is_active"]);
+  });
+
   test("model error: 500 internal, counted, not saved", async () => {
     answerQuestion.mockRejectedValue(new Error("Empty model reply"));
     const res = await post(body());
     expect(res.status).toBe(500);
     expect((await res.json()).error.code).toBe("internal");
-    expect(rpcNames()).toEqual(["consume_message", "match_chunks"]);
+    expect(rpcNames()).toEqual(["project_is_active", "consume_message", "match_chunks_active"]);
   });
 
   test("success: first message creates a conversation and saves the turn", async () => {
@@ -151,11 +186,12 @@ describe("POST /api/widget/chat", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("access-control-allow-origin")).toBe("*");
     expect(await res.json()).toEqual({ conversationId: CONV, reply: "The answer." });
-    expect(rpcNames()).toEqual(["consume_message", "match_chunks", "save_chat_turn"]);
-    expect(rpc).toHaveBeenCalledWith("match_chunks", {
+    expect(rpcNames()).toEqual(["project_is_active", "consume_message", "match_chunks_active", "save_chat_turn"]);
+    expect(rpc).toHaveBeenCalledWith("match_chunks_active", {
       p_project_id: "p1",
       p_embedding: JSON.stringify([0.1, 0.2]),
       p_match_count: 5,
+      p_max_sources: PLAN_LIMITS.free.knowledgeSources,
     });
     expect(answerQuestion).toHaveBeenCalledWith(
       expect.objectContaining({ question: "Hello?", chunks: ["chunk A", "chunk B"], history: [] }),
@@ -203,7 +239,7 @@ describe("POST /api/widget/chat", () => {
     rpc.mockImplementation(async (name: string) =>
       name === "save_chat_turn"
         ? { data: null, error: { code: "P0002", message: "not_found" } }
-        : name === "consume_message"
+        : name === "consume_message" || name === "project_is_active"
           ? { data: true, error: null }
           : { data: [], error: null },
     );

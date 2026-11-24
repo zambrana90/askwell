@@ -15,6 +15,7 @@ export function ProjectSubnav({ projectId }: { projectId: string }) {
     { label: "Overview", href: base },
     { label: "Knowledge", href: `${base}/knowledge` },
     { label: "Conversations", href: `${base}/conversations` },
+    { label: "Customize", href: `${base}/customize` },
     { label: "Install", href: `${base}/install` },
   ];
   return (

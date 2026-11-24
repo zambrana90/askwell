@@ -12,6 +12,7 @@ import type {
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
 import { Panel } from "../ui/panel";
+import { pausedIds, pausedProjectNote, type PlanName } from "../../lib/plan/pause";
 import { currentUsage } from "../../lib/usage/usage";
 import { ConfirmDialog } from "./confirm-dialog";
 
@@ -23,6 +24,8 @@ type Props = {
   messagesPerMonth: number;
   /** Shown when the owner is at the limit, and after a 403 `plan_limit`. */
   limitMessage: string;
+  /** The plan's name, for the paused note. */
+  planName?: PlanName;
 };
 
 type Result<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
@@ -47,7 +50,7 @@ async function call<T>(method: string, url: string, body?: unknown): Promise<Res
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 
-export function ProjectsView({ initialProjects, maxProjects, messagesPerMonth, limitMessage }: Props) {
+export function ProjectsView({ initialProjects, maxProjects, messagesPerMonth, limitMessage, planName = "Free" }: Props) {
   const [projects, setProjects] = useState(initialProjects);
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -65,6 +68,8 @@ export function ProjectsView({ initialProjects, maxProjects, messagesPerMonth, l
 
   const headingRef = useRef<HTMLHeadingElement>(null);
   const atLimit = projects.length >= maxProjects;
+  // Extras after a downgrade: paused, not deleted. Same rule as project_is_active in SQL.
+  const paused = pausedIds(projects, maxProjects);
   const showLimit = atLimit || limitHit;
 
   async function onCreate(e: FormEvent) {
@@ -205,9 +210,27 @@ export function ProjectsView({ initialProjects, maxProjects, messagesPerMonth, l
                       >
                         {p.name}
                       </Link>
+                      {paused.has(p.id) ? (
+                        <span
+                          data-testid="paused-badge"
+                          className="mt-1 inline-block rounded-full border border-glass-edge px-2.5 py-0.5 text-xs font-medium"
+                        >
+                          Paused
+                        </span>
+                      ) : null}
                       <p className="mt-1 text-sm text-ink-muted">
                         Created {formatDate(p.createdAt)} · {currentUsage(p, messagesPerMonth, new Date()).used} of {messagesPerMonth} messages this month
                       </p>
+                      {paused.has(p.id) ? (
+                        <p data-testid="paused-note" className="mt-1 text-sm text-ink-muted">
+                          {pausedProjectNote(planName, maxProjects)}{" "}
+                          {planName === "Free" ? (
+                            <Link href="/dashboard/billing" className="underline">
+                              Upgrade
+                            </Link>
+                          ) : null}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="flex gap-2">
                       <Button variant="secondary" onClick={() => startRename(p)} aria-label={`Rename ${p.name}`}>

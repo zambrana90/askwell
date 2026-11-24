@@ -199,6 +199,36 @@ test("project page shows the public key", async () => {
   expect(screen.getByText(`pk_${ID}`)).toBeTruthy();
 });
 
+test("projects list: projects past the plan limit show Paused with a note and an upgrade link (Free)", () => {
+  const old = { ...p("p1", "Oldest"), createdAt: "2026-10-01T00:00:00+00:00" };
+  const newer = { ...p("p2", "Newer"), createdAt: "2026-11-01T00:00:00+00:00" };
+  render(
+    <ProjectsView initialProjects={[newer, old]} maxProjects={1} messagesPerMonth={100} limitMessage={FREE_MSG} planName="Free" />,
+  );
+  expect(screen.getAllByTestId("paused-badge")).toHaveLength(1);
+  const row = screen.getByText("Newer").closest("li")!;
+  expect(row.textContent).toContain("Paused");
+  expect(row.textContent).toContain("Your Free plan includes 1 active project. Upgrade or delete projects to turn this one back on.");
+  expect(row.querySelector('a[href="/dashboard/billing"]')).toBeTruthy();
+  expect(screen.getByText("Oldest").closest("li")!.textContent).not.toContain("Paused");
+});
+
+test("projects list: nothing is paused within the limit (Pro)", () => {
+  render(
+    <ProjectsView initialProjects={[p("p1", "A"), p("p2", "B")]} maxProjects={5} messagesPerMonth={2000} limitMessage={FREE_MSG} planName="Pro" />,
+  );
+  expect(screen.queryByTestId("paused-badge")).toBeNull();
+  expect(screen.queryByTestId("paused-note")).toBeNull();
+});
+
+test("projects list: a Pro account over its limit gets no upgrade link", () => {
+  const list = [1, 2, 3].map((n) => ({ ...p(`p${n}`, `P${n}`), createdAt: `2026-10-0${n}T00:00:00+00:00` }));
+  render(<ProjectsView initialProjects={list} maxProjects={2} messagesPerMonth={2000} limitMessage={FREE_MSG} planName="Pro" />);
+  const note = screen.getByTestId("paused-note");
+  expect(note.textContent).toContain("Your Pro plan includes 2 active projects. Delete projects to turn this one back on.");
+  expect(note.querySelector("a")).toBeNull();
+});
+
 test("projects list: a count from a previous month shows as 0", () => {
   view([{ ...p("p1", "Old"), messagesUsed: 90, periodStart: "2026-10-01T00:00:00+00:00" }]);
   expect(screen.getByText(/0 of 2000 messages this month/)).toBeTruthy();

@@ -21,7 +21,9 @@ for (const m of ["select", "order", "update", "delete", "eq"]) {
     return builder;
   };
 }
-builder.maybeSingle = () => Promise.resolve(result);
+// `single` overrides what a one-row read returns, when a test also needs a different write result.
+let single: { data: unknown; error: unknown } | undefined;
+builder.maybeSingle = () => Promise.resolve(single ?? result);
 builder.then = (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) =>
   Promise.resolve(result).then(res, rej);
 const ownerFrom = vi.fn((table: string) => {
@@ -32,8 +34,23 @@ vi.mock("../../../lib/supabase/owner", () => ({ createOwnerClient: () => ({ from
 
 const rpc = vi.fn();
 const serviceFrom = vi.fn();
+
+// The knowledge bucket: object paths, listed and removed by prefix like Storage does.
+let files: string[] = [];
+let storageError: { op: "list" | "remove"; message: string } | undefined;
+const list = vi.fn(async (prefix: string, { limit }: { limit: number }) => {
+  if (storageError?.op === "list") return { data: null, error: storageError };
+  const names = files.filter((f) => f.startsWith(`${prefix}/`)).map((f) => ({ name: f.slice(prefix.length + 1) }));
+  return { data: names.slice(0, limit), error: null };
+});
+const removeFiles = vi.fn(async (paths: string[]) => {
+  if (storageError?.op === "remove") return { data: null, error: storageError };
+  const removed = files.filter((f) => paths.includes(f));
+  files = files.filter((f) => !paths.includes(f));
+  return { data: removed.map((name) => ({ name })), error: null };
+});
 vi.mock("../../../lib/supabase/service", () => ({
-  createServiceClient: () => ({ rpc, from: serviceFrom }),
+  createServiceClient: () => ({ rpc, from: serviceFrom, storage: { from: () => ({ list, remove: removeFiles }) } }),
 }));
 
 const ensureAccount = vi.fn();
@@ -69,6 +86,11 @@ beforeEach(() => {
   trackProjectCreated.mockReset();
   calls.length = 0;
   result = { data: null, error: null };
+  single = undefined;
+  files = [];
+  storageError = undefined;
+  list.mockClear();
+  removeFiles.mockClear();
   authMock.mockReset().mockResolvedValue({ userId: "user_1" });
   rpc.mockReset();
   ownerFrom.mockClear();
@@ -234,26 +256,98 @@ describe("PATCH /api/projects/:id", () => {
 
 describe("DELETE /api/projects/:id", () => {
   const del = () => new Request("http://localhost/api/projects/x", { method: "DELETE" });
+  const OTHER = "6a1d3a1f-9b4b-4b64-8c1f-4b7a2e2b3c4d";
+  /** The caller owns the project, and the delete removes its row. */
+  const owned = () => {
+    single = { data: row, error: null };
+    result = { data: [{ id: ID }], error: null };
+  };
+  const deleted = () => calls.some(([m]) => m === "delete");
 
   test("deletes through the owner client", async () => {
-    result = { data: [{ id: ID }], error: null };
+    owned();
     const res = await DELETE(del(), ctx(ID));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
+    expect(deleted()).toBe(true);
     expect(serviceFrom).not.toHaveBeenCalled();
+    expect(removeFiles).not.toHaveBeenCalled(); // no files
   });
 
-  test("404 when no row was deleted", async () => {
-    result = { data: [], error: null };
+  test("removes all of the project's files, past one page, and no other project's", async () => {
+    owned();
+    const other = [`${OTHER}/a.pdf`, `${ID}x/a.pdf`];
+    files = [...Array.from({ length: 230 }, (_, i) => `${ID}/${i}.txt`), ...other];
+    expect((await DELETE(del(), ctx(ID))).status).toBe(200);
+    expect(files).toEqual(other);
+    expect(removeFiles).toHaveBeenCalledTimes(3);
+    expect(list.mock.calls.every(([prefix]) => prefix === ID)).toBe(true);
+  });
+
+  test("removes the files before the row", async () => {
+    owned();
+    files = [`${ID}/a.pdf`];
+    let rowDeletedFirst = true;
+    removeFiles.mockImplementationOnce(async () => {
+      rowDeletedFirst = deleted();
+      files = [];
+      return { data: [{ name: "a.pdf" }], error: null };
+    });
+    await DELETE(del(), ctx(ID));
+    expect(rowDeletedFirst).toBe(false);
+  });
+
+  test.each(["list", "remove"] as const)("still deletes the row when Storage %s fails, and logs the prefix", async (op) => {
+    owned();
+    files = [`${ID}/a.pdf`];
+    storageError = { op, message: "storage down" };
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect((await DELETE(del(), ctx(ID))).status).toBe(200);
+    expect(deleted()).toBe(true);
+    expect(log.mock.calls[0]![0]).toContain(`"${ID}/"`);
+    log.mockRestore();
+  });
+
+  test("stops, and still deletes the row, when Storage removes nothing", async () => {
+    owned();
+    files = [`${ID}/a.pdf`];
+    removeFiles.mockResolvedValueOnce({ data: [], error: null });
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect((await DELETE(del(), ctx(ID))).status).toBe(200);
+    expect(removeFiles).toHaveBeenCalledTimes(1);
+    expect(deleted()).toBe(true);
+    log.mockRestore();
+  });
+
+  test("404 for a project the caller doesn't own: no files touched, nothing deleted", async () => {
+    files = [`${ID}/a.pdf`];
     const res = await DELETE(del(), ctx(ID));
     expect(res.status).toBe(404);
     expect((await res.json()).error.code).toBe("not_found");
+    expect(list).not.toHaveBeenCalled();
+    expect(deleted()).toBe(false);
+  });
+
+  test("404 when no row was deleted", async () => {
+    single = { data: row, error: null };
+    result = { data: [], error: null };
+    expect((await DELETE(del(), ctx(ID))).status).toBe(404);
+  });
+
+  test("500 and nothing removed when the ownership check fails", async () => {
+    single = { data: null, error: { message: "db down" } };
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect((await DELETE(del(), ctx(ID))).status).toBe(500);
+    expect(list).not.toHaveBeenCalled();
+    expect(deleted()).toBe(false);
+    log.mockRestore();
   });
 
   test("400 for a bad id; 401 signed out", async () => {
     expect((await DELETE(del(), ctx("nope"))).status).toBe(400);
     authMock.mockResolvedValue({ userId: null });
     expect((await DELETE(del(), ctx(ID))).status).toBe(401);
+    expect(list).not.toHaveBeenCalled();
   });
 });
 

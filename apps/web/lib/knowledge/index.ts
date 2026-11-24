@@ -6,6 +6,7 @@ export {
   STALE_UPLOAD_MS,
   reclaimStaleUploads,
   removeOrphanFiles,
+  removeProjectFiles,
   removeSource,
   reserveSource,
   toKnowledgeSource,

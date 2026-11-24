@@ -30,11 +30,21 @@ export async function answerQuestion(input: {
   const res = await getOpenAI().chat.completions.create({
     model: CHAT_MODEL,
     max_completion_tokens: MAX_OUTPUT_TOKENS,
+    // Answering from a few chunks needs little reasoning: faster, cheaper, and
+    // less likely to spend the whole output cap on reasoning.
+    reasoning_effort: "low",
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       ...history.map((m) => ({ role: m.role, content: m.content })),
       { role: "user", content: buildUserMessage(input.question, input.chunks) },
     ],
   });
-  return res.choices[0]?.message?.content?.trim() ?? "";
+  const choice = res.choices[0];
+  const reply = choice?.message?.content?.trim();
+  // An empty reply (e.g. finish_reason "length" after reasoning used the cap) is a
+  // model error, never a bot message to save or show.
+  if (!reply) {
+    throw new Error(`Empty model reply (finish_reason: ${choice?.finish_reason ?? "none"})`);
+  }
+  return reply;
 }

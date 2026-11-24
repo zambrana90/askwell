@@ -32,6 +32,7 @@ describe("answerQuestion", () => {
     expect(args.model).toBe(CHAT_MODEL);
     expect(CHAT_MODEL).toBe("gpt-5-mini");
     expect(args.max_completion_tokens).toBeGreaterThan(0);
+    expect(args.reasoning_effort).toBe("low");
     expect(args.messages[0]).toEqual({ role: "system", content: SYSTEM_PROMPT });
     expect(SYSTEM_PROMPT).toContain("I don't know");
     expect(args.messages).toHaveLength(1 + 6 + 1);
@@ -43,5 +44,21 @@ describe("answerQuestion", () => {
     expect(last.content).toContain("We are open 9-5.");
     expect(last.content).toContain("Closed Sundays.");
     expect(last.content).toContain("When are you open?");
+  });
+
+  test.each([
+    ["empty content", { content: "", finish_reason: "length" }],
+    ["whitespace content", { content: "  \n ", finish_reason: "stop" }],
+    ["null content", { content: null, finish_reason: "length" }],
+  ])("throws on %s so it is never saved as a bot message", async (_name, { content, finish_reason }) => {
+    create.mockResolvedValue({ choices: [{ message: { content }, finish_reason }] });
+    await expect(answerQuestion({ question: "q", chunks: ["c"], history: [] })).rejects.toThrow(
+      /Empty model reply/,
+    );
+  });
+
+  test("throws when there are no choices", async () => {
+    create.mockResolvedValue({ choices: [] });
+    await expect(answerQuestion({ question: "q", chunks: ["c"], history: [] })).rejects.toThrow();
   });
 });

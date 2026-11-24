@@ -59,30 +59,36 @@ export async function reserveSource(
 
 /**
  * Deletes this project's `uploading` sources older than STALE_UPLOAD_MS: Storage objects first,
- * then rows. If removing the files fails, the rows stay so the files are not orphaned; a later
- * call retries. Caller MUST have checked ownership of `projectId`.
+ * then rows. Caller MUST have checked ownership of `projectId`.
+ *
+ * Each stale row is first claimed with one conditional update (`uploading` → `failed`, still
+ * stale). Finalize claims with `status = 'uploading'` too, so exactly one of them wins a row:
+ * files and rows are removed only for rows this call claimed. If removing the files fails, the
+ * claim is undone (back to `uploading`, still stale) so a later call retries.
  */
 export async function reclaimStaleUploads(projectId: string): Promise<void> {
   const db = createServiceClient();
   const cutoff = new Date(Date.now() - STALE_UPLOAD_MS).toISOString();
-  const { data: stale, error } = await db
+  const { data: claimed, error } = await db
     .from("knowledge_sources")
-    .select("id, storage_key")
+    .update({ status: "failed" })
     .eq("project_id", projectId)
     .eq("status", "uploading")
-    .lt("created_at", cutoff);
+    .lt("created_at", cutoff)
+    .select("id, storage_key");
   if (error) throw new Error(`reclaimStaleUploads failed: ${error.message}`);
-  if (!stale || stale.length === 0) return;
+  if (!claimed || claimed.length === 0) return;
 
-  const keys = stale.map((s) => s.storage_key).filter((k): k is string => !!k);
+  const ids = claimed.map((s) => s.id);
+  const keys = claimed.map((s) => s.storage_key).filter((k): k is string => !!k);
   if (keys.length > 0) {
     const { error: removeError } = await db.storage.from(KNOWLEDGE_BUCKET).remove(keys);
-    if (removeError) throw new Error(`reclaimStaleUploads storage failed: ${removeError.message}`);
+    if (removeError) {
+      await db.from("knowledge_sources").update({ status: "uploading" }).in("id", ids).eq("status", "failed");
+      throw new Error(`reclaimStaleUploads storage failed: ${removeError.message}`);
+    }
   }
-  const { error: deleteError } = await db
-    .from("knowledge_sources")
-    .delete()
-    .in("id", stale.map((s) => s.id));
+  const { error: deleteError } = await db.from("knowledge_sources").delete().in("id", ids);
   if (deleteError) throw new Error(`reclaimStaleUploads delete failed: ${deleteError.message}`);
 }
 

@@ -24,10 +24,27 @@ type Context = { params: Promise<{ id: string }> };
 
 const PDF_MAGIC = "%PDF-";
 
-/** True if the stored object exists, is within the size limit and, for a pdf, starts with %PDF-. */
+/** The storage client's "no such object" error (status 404, or a 400 with a not-found message). */
+function isNotFound(error: { message?: string; status?: unknown; statusCode?: unknown }): boolean {
+  return (
+    error.status === 404 ||
+    error.statusCode === "404" ||
+    error.statusCode === 404 ||
+    /not.?found/i.test(error.message ?? "")
+  );
+}
+
+/**
+ * Whether the stored object is acceptable: it exists, is within the size limit and, for a pdf,
+ * starts with %PDF-. A confirmed missing or invalid file is `false`. Any other download error
+ * (network, service) THROWS, so a valid upload is never deleted because of a transient failure.
+ */
 async function storedFileIsValid(storageKey: string, type: string): Promise<boolean> {
   const { data, error } = await createServiceClient().storage.from(KNOWLEDGE_BUCKET).download(storageKey);
-  if (error || !data) return false;
+  if (error) {
+    if (isNotFound(error)) return false;
+    throw new Error(`download failed: ${error.message}`);
+  }
   const bytes = new Uint8Array(await data.arrayBuffer());
   if (bytes.length === 0 || bytes.length > MAX_KNOWLEDGE_FILE_BYTES) return false;
   if (type === "pdf") return new TextDecoder("latin1").decode(bytes.subarray(0, PDF_MAGIC.length)) === PDF_MAGIC;
@@ -65,9 +82,22 @@ export async function POST(request: Request, context: Context) {
     if (claimError) throw new Error(claimError.message);
     if (!claimed) return errorResponse("not_found", "Upload not found or expired.");
 
-    if (!claimed.storage_key || !(await storedFileIsValid(claimed.storage_key, claimed.type))) {
-      await removeSource(claimed.id, claimed.storage_key);
-      return errorResponse("validation_error", "The uploaded file is missing, too large or not a valid file.");
+    // Until processSource is scheduled, a failure must not strand the row in `processing`
+    // (retries would get 404 and stale cleanup skips it): put the claim back.
+    try {
+      const valid = claimed.storage_key ? await storedFileIsValid(claimed.storage_key, claimed.type) : false;
+      if (!valid) {
+        await removeSource(claimed.id, claimed.storage_key);
+        return errorResponse("validation_error", "The uploaded file is missing, too large or not a valid file.");
+      }
+    } catch (err) {
+      await db
+        .from("knowledge_sources")
+        .update({ status: "uploading" })
+        .eq("id", claimed.id)
+        .eq("status", "processing")
+        .then(undefined, () => undefined);
+      throw err;
     }
 
     const sourceId = claimed.id;

@@ -20,6 +20,8 @@ const state = {
   accounts: [] as Row[],
   sources: [] as Row[],
   files: new Map<string, Uint8Array>(),
+  downloadError: null as null | { message: string; status?: number },
+  removeFails: false,
 };
 
 /** A tiny in-memory query builder: eq / lt / gt / in filters, select / update / delete. */
@@ -101,11 +103,13 @@ vi.mock("../../../lib/supabase/service", () => ({
       from: () => ({
         createSignedUploadUrl: async (path: string) => ({ data: { path, token: "tok_1" }, error: null }),
         download: async (path: string) => {
+          if (state.downloadError) return { data: null, error: state.downloadError };
           const bytes = state.files.get(path);
-          if (!bytes) return { data: null, error: new Error("not found") };
+          if (!bytes) return { data: null, error: { message: "Object not found", status: 404 } };
           return { data: { arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) }, error: null };
         },
         remove: async (paths: string[]) => {
+          if (state.removeFails) return { data: null, error: { message: "storage down" } };
           for (const p of paths) state.files.delete(p);
           return { data: [], error: null };
         },
@@ -143,6 +147,9 @@ beforeEach(() => {
   state.accounts = [{ clerk_user_id: "user_1", plan: "free" }];
   state.sources = [];
   state.files = new Map();
+  state.downloadError = null;
+  state.removeFails = false;
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 
 describe("POST /api/projects/:id/knowledge (paste)", () => {
@@ -226,6 +233,29 @@ describe("POST /api/projects/:id/knowledge/upload-url", () => {
     expect(state.sources).toHaveLength(1);
   });
 
+  test("reclaim leaves a stale-dated row that finalize already claimed (processing), file included", async () => {
+    const old = new Date(Date.now() - STALE_UPLOAD_MS - 60_000).toISOString();
+    const claimedRow = sourceRow({ status: "processing", created_at: old });
+    state.sources = [claimedRow];
+    state.files.set(claimedRow.storage_key as string, bytes("%PDF-"));
+    expect((await uploadUrl(post(uploadBody), ctx(PROJECT))).status).toBe(200);
+    expect(state.files.size).toBe(1);
+    expect(state.sources.some((s) => s.id === claimedRow.id && s.status === "processing")).toBe(true);
+  });
+
+  test("reclaim: if removing files fails, stale rows go back to uploading for a later retry", async () => {
+    const old = new Date(Date.now() - STALE_UPLOAD_MS - 60_000).toISOString();
+    state.sources = [sourceRow({ created_at: old })];
+    state.files.set(state.sources[0]!.storage_key as string, bytes("%PDF-"));
+    state.removeFails = true;
+    expect((await uploadUrl(post(uploadBody), ctx(PROJECT))).status).toBe(500);
+    expect(state.sources).toHaveLength(1);
+    expect(state.sources[0]!.status).toBe("uploading");
+    state.removeFails = false;
+    expect((await uploadUrl(post(uploadBody), ctx(PROJECT))).status).toBe(200);
+    expect(state.files.size).toBe(0);
+  });
+
   test("keeps fresh uploading sources", async () => {
     state.sources = [sourceRow({})];
     await uploadUrl(post(uploadBody), ctx(PROJECT));
@@ -300,6 +330,33 @@ describe("POST /api/projects/:id/knowledge/finalize", () => {
     state.sources = [sourceRow({ type: "txt", storage_key: txtKey })];
     state.files.set(txtKey, bytes("plain notes"));
     expect((await finalize(post({ sourceId: SID }), ctx(PROJECT))).status).toBe(200);
+  });
+
+  test("a transient download error keeps the file and source, and the claim is put back", async () => {
+    state.sources = [sourceRow({})];
+    state.files.set(key, bytes("%PDF-1.4 hello"));
+    state.downloadError = { message: "fetch failed" };
+    const res = await finalize(post({ sourceId: SID }), ctx(PROJECT));
+    expect(res.status).toBe(500);
+    expect(state.files.has(key)).toBe(true);
+    expect(state.sources).toHaveLength(1);
+    expect(state.sources[0]!.status).toBe("uploading");
+    // The retry works.
+    state.downloadError = null;
+    expect((await finalize(post({ sourceId: SID }), ctx(PROJECT))).status).toBe(200);
+  });
+
+  test("a failed cleanup of a refused file restores the claim, so the next request can retry", async () => {
+    state.sources = [sourceRow({})];
+    state.files.set(key, bytes("<html>not a pdf</html>"));
+    state.removeFails = true;
+    expect((await finalize(post({ sourceId: SID }), ctx(PROJECT))).status).toBe(500);
+    expect(state.sources[0]!.status).toBe("uploading");
+    expect(afterTasks).toHaveLength(0);
+    state.removeFails = false;
+    expect((await finalize(post({ sourceId: SID }), ctx(PROJECT))).status).toBe(400);
+    expect(state.sources).toHaveLength(0);
+    expect(state.files.has(key)).toBe(false);
   });
 
   test("a reservation older than 2 hours is 404", async () => {

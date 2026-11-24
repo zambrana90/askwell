@@ -10,7 +10,11 @@ const posthog = {
   stopSessionRecording: vi.fn(),
   identify: vi.fn(),
   reset: vi.fn(),
+  get_property: vi.fn(),
+  get_distinct_id: vi.fn(),
 };
+/** The identity PostHog holds, persisted across page loads. */
+let stored: string | null = null;
 let posthogLoaded = false;
 vi.mock("posthog-js", () => {
   posthogLoaded = true; // the factory runs only when something imports posthog-js
@@ -24,6 +28,11 @@ beforeEach(() => {
   pathname = "/";
   posthogLoaded = false;
   Object.values(posthog).forEach((f) => f.mockReset());
+  stored = null;
+  posthog.get_property.mockImplementation(() => (stored ? "identified" : "anonymous"));
+  posthog.get_distinct_id.mockImplementation(() => stored ?? "anon-device-id");
+  posthog.identify.mockImplementation((id: string) => (stored = id));
+  posthog.reset.mockImplementation(() => (stored = null));
   process.env.NEXT_PUBLIC_POSTHOG_KEY = "phc_test";
   process.env.NEXT_PUBLIC_POSTHOG_HOST = "https://eu.i.posthog.com";
   vi.resetModules();
@@ -112,5 +121,28 @@ describe("PosthogGate", () => {
     expect(posthog.identify).toHaveBeenCalledTimes(1); // the id only, no traits
     listener({ user: null });
     expect(posthog.reset).toHaveBeenCalledTimes(1);
+  });
+
+  const signedInAs = (id: string | null) => {
+    (window as unknown as { Clerk: unknown }).Clerk = {
+      loaded: true,
+      user: id ? { id } : null,
+      addListener: () => () => undefined,
+    };
+  };
+
+  test.each([
+    { name: "resets a restored identity when Clerk has no user", before: "user_old", clerk: null, resets: 1, identifies: 0 },
+    { name: "resets before identifying a different user", before: "user_old", clerk: "user_new", resets: 1, identifies: 1 },
+    { name: "keeps a restored identity for the same user", before: "user_abc", clerk: "user_abc", resets: 0, identifies: 0 },
+    { name: "leaves an anonymous visitor alone", before: null, clerk: null, resets: 0, identifies: 0 },
+  ])("$name", async ({ before, clerk, resets, identifies }) => {
+    pathname = "/dashboard";
+    stored = before;
+    signedInAs(clerk);
+    await mount();
+    await waitFor(() => expect(posthog.get_property).toHaveBeenCalled(), { timeout: 3000 });
+    expect(posthog.reset).toHaveBeenCalledTimes(resets);
+    expect(posthog.identify).toHaveBeenCalledTimes(identifies);
   });
 });

@@ -37,15 +37,12 @@ function loadPosthog(): Promise<PosthogClient | null> {
 function watchClerk(posthog: PosthogClient) {
   if (watchingClerk) return;
   watchingClerk = true;
-  let identified: string | null = null;
   const apply = (id?: string | null) => {
-    if (id && id !== identified) {
-      posthog.identify(id);
-      identified = id;
-    } else if (!id && identified) {
-      posthog.reset();
-      identified = null;
-    }
+    // Ask PostHog, not this page load: it restores the identity from earlier visits.
+    const current = posthog.get_property("$user_state") === "identified" ? posthog.get_distinct_id() : null;
+    if ((id ?? null) === current) return;
+    if (current) posthog.reset(); // signed out, or a different user
+    if (id) posthog.identify(id);
   };
   let tries = 0;
   const timer = setInterval(() => {

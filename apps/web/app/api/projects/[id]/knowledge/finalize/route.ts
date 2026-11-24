@@ -6,6 +6,7 @@ import {
   idParamsSchema,
 } from "@askwell/shared";
 import type { FinalizeKnowledgeResponse } from "@askwell/shared";
+import { trackKnowledgeAdded } from "../../../../../../lib/analytics/events";
 import {
   KNOWLEDGE_BUCKET,
   SOURCE_COLUMNS,
@@ -104,6 +105,7 @@ export async function POST(request: Request, context: Context) {
     after(async () => {
       await processSource({ sourceId });
     });
+    trackKnowledgeAdded(userId, project.id, claimed.type);
     return Response.json({ source: toKnowledgeSource(claimed) } satisfies FinalizeKnowledgeResponse);
   } catch (err) {
     console.error("finalize knowledge failed:", err instanceof Error ? err.message : err);

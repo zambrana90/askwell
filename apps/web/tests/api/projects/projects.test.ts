@@ -3,6 +3,11 @@ import { DEFAULT_WIDGET_CONFIG, PLAN_LIMITS } from "@askwell/shared";
 
 vi.mock("server-only", () => ({}));
 
+const trackProjectCreated = vi.fn();
+vi.mock("../../../lib/analytics/events", () => ({
+  trackProjectCreated: (...a: unknown[]) => trackProjectCreated(...a),
+}));
+
 const authMock = vi.fn();
 vi.mock("@clerk/nextjs/server", () => ({ auth: () => authMock() }));
 
@@ -61,6 +66,7 @@ const json = (body: unknown) =>
 const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
 
 beforeEach(() => {
+  trackProjectCreated.mockReset();
   calls.length = 0;
   result = { data: null, error: null };
   authMock.mockReset().mockResolvedValue({ userId: "user_1" });
@@ -248,5 +254,22 @@ describe("DELETE /api/projects/:id", () => {
     expect((await DELETE(del(), ctx("nope"))).status).toBe(400);
     authMock.mockResolvedValue({ userId: null });
     expect((await DELETE(del(), ctx(ID))).status).toBe(401);
+  });
+});
+
+describe("project_created", () => {
+  test("once on success, with the owner and the project id only", async () => {
+    rpc.mockResolvedValue({ data: row, error: null });
+    expect((await POST(json({ name: "Docs" }))).status).toBe(201);
+    expect(trackProjectCreated.mock.calls).toEqual([["user_1", ID]]);
+  });
+
+  test("not sent when creating fails", async () => {
+    rpc.mockResolvedValue({ data: null, error: { code: "P0001", message: "plan_limit" } });
+    await POST(json({ name: "Docs" }));
+    rpc.mockResolvedValue({ data: null, error: { code: "XX000", message: "boom" } });
+    await POST(json({ name: "Docs" }));
+    await POST(json({}));
+    expect(trackProjectCreated).not.toHaveBeenCalled();
   });
 });

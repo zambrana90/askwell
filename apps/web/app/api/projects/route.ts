@@ -6,6 +6,7 @@ import {
 } from "@askwell/shared";
 import type { CreateProjectResponse, ProjectListResponse } from "@askwell/shared";
 import { ensureAccount } from "../../../lib/accounts";
+import { trackProjectCreated } from "../../../lib/analytics/events";
 import {
   PROJECT_COLUMNS,
   errorResponse,
@@ -63,6 +64,7 @@ export async function POST(request: Request) {
         p_show_badge: c.showBadge,
       });
       if (!error) {
+        trackProjectCreated(userId, data.id);
         return Response.json({ project: toProject(data) } satisfies CreateProjectResponse, {
           status: 201,
         });

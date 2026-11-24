@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { after } from "next/server";
 import { idParamsSchema, pasteKnowledgeRequestSchema } from "@askwell/shared";
 import type { PasteKnowledgeResponse } from "@askwell/shared";
+import { trackKnowledgeAdded } from "../../../../../lib/analytics/events";
 import { processSource, reserveSource, toKnowledgeSource } from "../../../../../lib/knowledge";
 import { errorResponse, getOwnedProject, getPlan } from "../../../../../lib/projects/projects";
 
@@ -39,6 +40,7 @@ export async function POST(request: Request, context: Context) {
     after(async () => {
       await processSource({ sourceId, text });
     });
+    trackKnowledgeAdded(userId, project.id, "text");
     return Response.json({ source: toKnowledgeSource(reserved.source) } satisfies PasteKnowledgeResponse);
   } catch (err) {
     console.error("paste knowledge failed:", err instanceof Error ? err.message : err);

@@ -1,12 +1,15 @@
 "use client";
 
+import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { trackSnippetCopied } from "../../lib/analytics/client";
 import { Button } from "../ui/button";
 import { Panel } from "../ui/panel";
 
 type CopyState = "idle" | "copied" | "manual";
 
 export function InstallSnippet({ snippet }: { snippet: string }) {
+  const projectId = useParams<{ id?: string }>()?.id; // /dashboard/projects/[id]/install
   const codeRef = useRef<HTMLElement>(null);
   const [state, setState] = useState<CopyState>("idle");
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -28,6 +31,7 @@ export function InstallSnippet({ snippet }: { snippet: string }) {
     try {
       await navigator.clipboard.writeText(snippet);
       setState("copied");
+      if (projectId) void trackSnippetCopied(projectId);
       timer.current = setTimeout(() => setState("idle"), 2000);
     } catch {
       // Blocked or unavailable (permissions, insecure context): select it for the user.

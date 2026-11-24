@@ -6,6 +6,7 @@ import {
   type ApiErrorCode,
   type WidgetConfigResponse,
 } from "@askwell/shared";
+import { protectConfig } from "../../../../lib/security/arcjet";
 import { getWidgetConfigByKey } from "../../../../lib/widget/config";
 
 // Public route: any origin, no credentials (project.md §9).
@@ -35,6 +36,9 @@ export async function GET(request: Request) {
   });
   if (!parsed.success) return fail("validation_error", "A valid key is required.");
 
+  const verdict = await protectConfig(request, { publicKey: parsed.data.key });
+  if (verdict === "rate_limited") return fail("rate_limited", "Too many requests.");
+
   let config: WidgetConfigResponse | null;
   try {
     config = await getWidgetConfigByKey(parsed.data.key);
@@ -44,6 +48,13 @@ export async function GET(request: Request) {
   if (!config) return fail("not_found", "Unknown key.");
 
   return NextResponse.json(config, {
-    headers: { ...CORS_HEADERS, "Cache-Control": "public, max-age=60" },
+    headers: {
+      ...CORS_HEADERS,
+      // Browsers may cache for a minute. The Vercel CDN must not: a cached hit never
+      // reaches the function, so the Arcjet rate limit would never run.
+      "Cache-Control": "public, max-age=60",
+      "Vercel-CDN-Cache-Control": "no-store",
+      "CDN-Cache-Control": "no-store",
+    },
   });
 }

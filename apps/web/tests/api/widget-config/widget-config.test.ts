@@ -9,6 +9,9 @@ const select = vi.fn(() => ({ eq }));
 const from = vi.fn(() => ({ select }));
 vi.mock("../../../lib/supabase/service", () => ({ createServiceClient: () => ({ from }) }));
 
+const protectConfig = vi.fn();
+vi.mock("../../../lib/security/arcjet", () => ({ protectConfig: (...a: unknown[]) => protectConfig(...a) }));
+
 import { GET, OPTIONS } from "../../../app/api/widget/config/route";
 
 const KEY = "pk_abcdef123456";
@@ -24,6 +27,8 @@ const call = (qs: string) => GET(new Request(`http://localhost/api/widget/config
 const row = (plan: string) => ({ data: { widget_configs: saved, accounts: { plan } }, error: null });
 
 beforeEach(() => {
+  protectConfig.mockReset();
+  protectConfig.mockResolvedValue("allow");
   maybeSingle.mockReset();
   from.mockClear();
   eq.mockClear();
@@ -45,6 +50,8 @@ describe("GET /api/widget/config", () => {
     expect(eq).toHaveBeenCalledWith("public_key", KEY);
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
     expect(res.headers.get("Cache-Control")).toBe("public, max-age=60");
+    expect(res.headers.get("Vercel-CDN-Cache-Control")).toBe("no-store");
+    expect(res.headers.get("CDN-Cache-Control")).toBe("no-store");
   });
 
   test("Free gets the defaults and badge even when custom values are saved", async () => {
@@ -86,5 +93,14 @@ describe("GET /api/widget/config", () => {
     expect(res.status).toBe(204);
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
     expect(res.headers.get("Access-Control-Allow-Methods")).toContain("GET");
+  });
+
+  test("over the rate limit: 429 rate_limited with CORS headers, no DB read", async () => {
+    protectConfig.mockResolvedValue("rate_limited");
+    const res = await call(`?key=${KEY}`);
+    expect(res.status).toBe(429);
+    expect(res.headers.get("access-control-allow-origin")).toBe("*");
+    expect((await res.json()).error.code).toBe("rate_limited");
+    expect(from).not.toHaveBeenCalled();
   });
 });

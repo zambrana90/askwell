@@ -18,6 +18,7 @@ vi.mock("../../lib/embed/chat", async (importOriginal) => ({
 }));
 
 import EmbedPage from "../../app/embed/page";
+import { Unavailable } from "../../app/embed/unavailable";
 import { EmbedPanel } from "../../components/embed/embed-panel";
 import { ChatError } from "../../lib/embed/chat";
 import { parseHostOrigin } from "../../lib/embed/origin";
@@ -87,9 +88,6 @@ describe("/embed page", () => {
     expect(getConfig).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Close chat" }));
     expect(parentPost).toHaveBeenCalledWith({ type: "askwell:close" }, HOST);
-    parentPost.mockClear();
-    fireEvent.keyDown(screen.getByRole("status"), { key: "Escape" });
-    expect(parentPost).toHaveBeenCalledWith({ type: "askwell:close" }, HOST);
   });
 
   test("the limit is checked before the read, with the key and the visitor's headers", async () => {
@@ -114,6 +112,35 @@ describe("/embed page", () => {
     render(ui);
     expect(screen.getByRole("heading", { name: "Hi there" })).toBeTruthy();
     expect(getConfig).toHaveBeenCalledWith(KEY);
+  });
+});
+
+describe.each([
+  ["panel", () => <EmbedPanel publicKey={KEY} config={config} hostOrigin={HOST} />],
+  ["unavailable state", () => <Unavailable hostOrigin={HOST} />],
+])("Escape in the %s", (_name, ui) => {
+  const closes = () => parentPost.mock.calls.filter(([message]) => message.type === "askwell:close");
+
+  test("closes when nothing is focused and the key goes to the body", () => {
+    render(ui());
+    expect(document.activeElement).toBe(document.body);
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(closes()).toEqual([[{ type: "askwell:close" }, HOST]]);
+  });
+
+  test("closes once from a focused control; not while composing or on other keys", () => {
+    render(ui());
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    fireEvent.keyDown(document.body, { key: "Escape", isComposing: true });
+    expect(closes()).toEqual([]);
+    fireEvent.keyDown(screen.getByRole("button", { name: "Close chat" }), { key: "Escape" });
+    expect(closes()).toHaveLength(1);
+  });
+
+  test("stops listening after unmount", () => {
+    render(ui()).unmount();
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(closes()).toEqual([]);
   });
 });
 

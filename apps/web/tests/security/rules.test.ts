@@ -25,20 +25,49 @@ const filesMatching = (pattern: RegExp) => files.filter((file) => pattern.test(r
 const RAW_HTML = /dangerouslySetInnerHTML|\.(inner|outer)HTML\b|insertAdjacentHTML|document\.write\(/;
 
 /**
- * Each `addEventListener("message", ...)` in a file, and whether its own callback starts with
- * `if (... event.origin !== x ...) return`. A callback defined in another file counts as
- * unguarded.
+ * The function an identifier names where it is used: the nearest enclosing scope that declares
+ * the name wins. Anything but a local function (a parameter, an import) is undefined.
+ */
+function resolveFunction(use: ts.Identifier): ts.FunctionLikeDeclaration | undefined {
+  const named = (name: ts.Node | undefined) => !!name && ts.isIdentifier(name) && name.text === use.text;
+  for (let scope: ts.Node = use.parent; scope; scope = scope.parent) {
+    if (ts.isFunctionLike(scope) && scope.parameters.some((p) => named(p.name))) return undefined;
+    if (!ts.isBlock(scope) && !ts.isSourceFile(scope)) continue;
+    for (const statement of scope.statements) {
+      if (ts.isFunctionDeclaration(statement) && named(statement.name)) return statement;
+      if (!ts.isVariableStatement(statement)) continue;
+      const declaration = statement.declarationList.declarations.find((d) => named(d.name));
+      if (!declaration) continue;
+      const value = declaration.initializer;
+      return value && (ts.isArrowFunction(value) || ts.isFunctionExpression(value)) ? value : undefined;
+    }
+  }
+  return undefined;
+}
+
+/** Whether the condition is true for every foreign origin: `event.origin !== x`, alone or in `||`. */
+function rejectsForeignOrigin(condition: ts.Expression, event: string): boolean {
+  if (ts.isParenthesizedExpression(condition)) return rejectsForeignOrigin(condition.expression, event);
+  if (!ts.isBinaryExpression(condition)) return false;
+  const { left, right, operatorToken } = condition;
+  if (operatorToken.kind === ts.SyntaxKind.BarBarToken) {
+    return rejectsForeignOrigin(left, event) || rejectsForeignOrigin(right, event);
+  }
+  return (
+    operatorToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken &&
+    left.getText() === `${event}.origin` &&
+    ts.isIdentifier(right)
+  );
+}
+
+/**
+ * Each `addEventListener("message", ...)` in a file, and whether its own callback starts by
+ * returning on a foreign `event.origin`. A callback defined in another file counts as unguarded.
  */
 function messageListeners(file: string, code: string): { file: string; line: number; guarded: boolean }[] {
   const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-  const functions = new Map<string, ts.FunctionLikeDeclaration>();
   const calls: ts.CallExpression[] = [];
   const visit = (node: ts.Node) => {
-    if (ts.isFunctionDeclaration(node) && node.name) functions.set(node.name.text, node);
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
-      const value = node.initializer;
-      if (ts.isArrowFunction(value) || ts.isFunctionExpression(value)) functions.set(node.name.text, value);
-    }
     if (ts.isCallExpression(node)) {
       const [type] = node.arguments;
       const name = ts.isPropertyAccessExpression(node.expression) ? node.expression.name.text : node.expression.getText();
@@ -54,16 +83,16 @@ function messageListeners(file: string, code: string): { file: string; line: num
       callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback))
         ? callback
         : callback && ts.isIdentifier(callback)
-          ? functions.get(callback.text)
+          ? resolveFunction(callback)
           : undefined;
     const event = fn?.parameters[0]?.name.getText();
     const first = fn?.body && ts.isBlock(fn.body) ? fn.body.statements[0] : undefined;
     const guarded =
+      !!event &&
       !!first &&
       ts.isIfStatement(first) &&
       ts.isReturnStatement(first.thenStatement) &&
-      // An `||` chain: a foreign origin always returns.
-      first.expression.getText().split("||").some((part) => part.trim().startsWith(`${event}.origin !== `));
+      rejectsForeignOrigin(first.expression, event);
     return { file, line: source.getLineAndCharacterOfPosition(call.getStart()).line + 1, guarded };
   });
 }
@@ -130,15 +159,43 @@ describe("§9 source rules", () => {
     expect(filesMatching(/\bonmessage\s*=/)).toEqual([]);
   });
 
+  const guards = (source: string) => messageListeners("x.ts", source).map((l) => l.guarded);
+
   test("the listener check judges each listener on its own", () => {
-    const source = `
-      const handler = (e: MessageEvent) => { if (e.origin !== host) return; use(e.data); };
+    expect(
+      guards(`
+        const handler = (e: MessageEvent) => { if (e.origin !== host) return; use(e.data); };
+        window.addEventListener("message", handler);
+        window.addEventListener("message", (event) => { if (!frame || (event.origin !== host)) return; });
+        window.addEventListener("message", (event) => { use(event.data); });
+        window.addEventListener("message", (event) => { use(event.data); if (event.origin !== host) return; });
+        window.addEventListener("message", imported);
+      `),
+    ).toEqual([true, true, false, false, false]);
+  });
+
+  test("the listener check rejects a guard that lets some foreign messages through", () => {
+    expect(
+      guards(`
+        window.addEventListener("message", (event) => { if (event.origin !== host && event.data === "x") return; });
+        window.addEventListener("message", (event) => { if (a || (event.origin !== host && b)) return; });
+        window.addEventListener("message", (event) => { if (!(event.origin !== host)) return; });
+        window.addEventListener("message", (event) => { if (event.origin !== event.origin) return; });
+      `),
+    ).toEqual([false, false, false, false]);
+  });
+
+  test("the listener check resolves a callback name in its own scope", () => {
+    const guarded = "(e: MessageEvent) => { if (e.origin !== host) return; }";
+    const open = "(e: MessageEvent) => { use(e.data); }";
+    const nested = (outer: string, inner: string) => `
+      const handler = ${outer};
+      function setup() { const handler = ${inner}; }
       window.addEventListener("message", handler);
-      window.addEventListener("message", (event) => { use(event.data); });
-      window.addEventListener("message", (event) => { use(event.data); if (event.origin !== host) return; });
-      window.addEventListener("message", imported);
     `;
-    expect(messageListeners("x.ts", source).map((l) => l.guarded)).toEqual([true, false, false, false]);
+    expect(guards(nested(open, guarded))).toEqual([false]);
+    expect(guards(nested(guarded, open))).toEqual([true]);
+    expect(guards(`const handler = ${guarded}; function on(handler: () => void) { window.addEventListener("message", handler); }`)).toEqual([false]);
   });
 
   test("Storage files never get a public URL", () => {

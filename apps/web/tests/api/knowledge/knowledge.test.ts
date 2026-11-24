@@ -22,6 +22,7 @@ const state = {
   files: new Map<string, Uint8Array>(),
   downloadError: null as null | { message: string; status?: number },
   removeFails: false,
+  deleteFails: false,
 };
 
 /** A tiny in-memory query builder: eq / lt / gt / in filters, select / update / delete. */
@@ -96,7 +97,15 @@ vi.mock("../../../lib/supabase/service", () => ({
       return {
         select: () => table(() => state.sources, set),
         update: (patch: Row) => table(() => state.sources, set, "update", patch),
-        delete: () => table(() => state.sources, set, "delete"),
+        delete: () => {
+          if (!state.deleteFails) return table(() => state.sources, set, "delete");
+          const failing: Record<string, unknown> = {
+            in: () => failing,
+            eq: () => failing,
+            then: (res: (v: unknown) => unknown) => Promise.resolve({ data: null, error: { message: "db down" } }).then(res),
+          };
+          return failing;
+        },
       };
     },
     storage: {
@@ -149,6 +158,7 @@ beforeEach(() => {
   state.files = new Map();
   state.downloadError = null;
   state.removeFails = false;
+  state.deleteFails = false;
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 
@@ -254,6 +264,20 @@ describe("POST /api/projects/:id/knowledge/upload-url", () => {
     state.removeFails = false;
     expect((await uploadUrl(post(uploadBody), ctx(PROJECT))).status).toBe(200);
     expect(state.files.size).toBe(0);
+  });
+
+  test("reclaim: if deleting rows fails after the files are gone, rows go back to uploading and a retry succeeds", async () => {
+    const old = new Date(Date.now() - STALE_UPLOAD_MS - 60_000).toISOString();
+    state.sources = [sourceRow({ created_at: old })];
+    state.files.set(state.sources[0]!.storage_key as string, bytes("%PDF-"));
+    state.deleteFails = true;
+    expect((await uploadUrl(post(uploadBody), ctx(PROJECT))).status).toBe(500);
+    expect(state.files.size).toBe(0);
+    expect(state.sources).toHaveLength(1);
+    expect(state.sources[0]!.status).toBe("uploading");
+    state.deleteFails = false;
+    expect((await uploadUrl(post(uploadBody), ctx(PROJECT))).status).toBe(200);
+    expect(state.sources).toHaveLength(1); // only the new reservation
   });
 
   test("keeps fresh uploading sources", async () => {

@@ -64,7 +64,8 @@ export async function reserveSource(
  * Each stale row is first claimed with one conditional update (`uploading` → `failed`, still
  * stale). Finalize claims with `status = 'uploading'` too, so exactly one of them wins a row:
  * files and rows are removed only for rows this call claimed. If removing the files fails, the
- * claim is undone (back to `uploading`, still stale) so a later call retries.
+ * or deleting the rows fails, the claim is undone (back to `uploading`, still stale) so a later
+ * call retries.
  */
 export async function reclaimStaleUploads(projectId: string): Promise<void> {
   const db = createServiceClient();
@@ -89,7 +90,11 @@ export async function reclaimStaleUploads(projectId: string): Promise<void> {
     }
   }
   const { error: deleteError } = await db.from("knowledge_sources").delete().in("id", ids);
-  if (deleteError) throw new Error(`reclaimStaleUploads delete failed: ${deleteError.message}`);
+  if (deleteError) {
+    // The files are already gone; removing missing objects is a no-op, so a retry is safe.
+    await db.from("knowledge_sources").update({ status: "uploading" }).in("id", ids).eq("status", "failed");
+    throw new Error(`reclaimStaleUploads delete failed: ${deleteError.message}`);
+  }
 }
 
 /**

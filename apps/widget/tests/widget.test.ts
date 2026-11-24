@@ -45,6 +45,32 @@ async function mount(cfg: unknown = config) {
 const post = (data: unknown, origin: string, source: unknown) =>
   window.dispatchEvent(new MessageEvent("message", { data, origin, source: source as Window }));
 
+describe("snippet in <head>, before <body> exists", () => {
+  test("waits for DOMContentLoaded, then renders exactly once", async () => {
+    const body = document.body;
+    body.remove();
+    try {
+      expect(document.body).toBeNull();
+      vi.stubGlobal("fetch", respond(config));
+      let settled = false;
+      const pending = init(scriptTag()).finally(() => (settled = true));
+      await new Promise((resolve) => setTimeout(resolve, 0)); // the config is back
+      expect(settled).toBe(false);
+
+      document.documentElement.append(body);
+      document.dispatchEvent(new Event("DOMContentLoaded"));
+      document.dispatchEvent(new Event("DOMContentLoaded"));
+      const host = await pending;
+
+      expect(host).not.toBeNull();
+      expect(document.querySelectorAll("askwell-widget")).toHaveLength(1);
+      expect(root(host!).querySelectorAll("button")).toHaveLength(1);
+    } finally {
+      if (!body.isConnected) document.documentElement.append(body);
+    }
+  });
+});
+
 describe("nothing renders", () => {
   test("no data-key: no fetch, nothing rendered", async () => {
     const fetchMock = respond(config);

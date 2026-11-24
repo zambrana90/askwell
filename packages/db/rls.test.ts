@@ -111,7 +111,11 @@ describe("migration", () => {
       "owned_conversation_ids",
       "owned_project_ids",
     ]);
-    for (const f of fns.rows) expect(f.config).toEqual(['search_path=""']);
+    for (const f of fns.rows) {
+      // match_chunks also pins hnsw.iterative_scan so the shared HNSW index can't hide a small project's chunks.
+      const extra = f.proname === "match_chunks" ? ["hnsw.iterative_scan=strict_order"] : [];
+      expect(f.config).toEqual(['search_path=""', ...extra]);
+    }
   });
 
   it("starts period_start at the first of the current month (UTC)", async () => {

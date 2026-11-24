@@ -97,6 +97,36 @@ export async function reclaimStaleUploads(projectId: string): Promise<void> {
   }
 }
 
+/** Files listed per sweep. A project has at most a few dozen real ones, so orphans can't hide. */
+const SWEEP_PAGE_SIZE = 1000;
+
+/**
+ * Removes this project's Storage files that no source row points to. A signed upload URL stays
+ * valid for 2 hours even after its source is deleted, so a late upload leaves such a file.
+ * Best effort: a failure is logged and the next call tries again.
+ * Caller MUST have checked ownership of `projectId`.
+ */
+export async function removeOrphanFiles(projectId: string): Promise<void> {
+  try {
+    const db = createServiceClient();
+    const bucket = db.storage.from(KNOWLEDGE_BUCKET);
+    // Files first, rows second: a row always exists before its upload URL is signed, so a
+    // listed file without a row afterwards can only belong to a deleted source.
+    const { data: files, error: listError } = await bucket.list(projectId, { limit: SWEEP_PAGE_SIZE });
+    if (listError) throw new Error(listError.message);
+    if (files.length === 0) return;
+    const { data: rows, error } = await db.from("knowledge_sources").select("storage_key").eq("project_id", projectId);
+    if (error) throw new Error(error.message);
+    const kept = new Set(rows.map((r) => r.storage_key));
+    const orphans = files.map((f) => `${projectId}/${f.name}`).filter((key) => !kept.has(key));
+    if (orphans.length === 0) return;
+    const { error: removeError } = await bucket.remove(orphans);
+    if (removeError) throw new Error(removeError.message);
+  } catch (err) {
+    console.error(`orphan file sweep failed for project ${projectId}:`, err instanceof Error ? err.message : err);
+  }
+}
+
 /**
  * Removes a source: its Storage object (if any), then the row (chunks cascade).
  * Caller MUST have proved ownership (owner-client read, or getOwnedProject).

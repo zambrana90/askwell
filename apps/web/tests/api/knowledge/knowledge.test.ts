@@ -28,6 +28,7 @@ const state = {
   downloadError: null as null | { message: string; status?: number },
   removeFails: false,
   deleteFails: false,
+  listFails: false,
 };
 
 /** A tiny in-memory query builder: eq / lt / gt / in filters, select / update / delete. */
@@ -122,6 +123,11 @@ vi.mock("../../../lib/supabase/service", () => ({
           if (!bytes) return { data: null, error: { message: "Object not found", status: 404 } };
           return { data: { arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) }, error: null };
         },
+        list: async (prefix: string) => {
+          if (state.listFails) return { data: null, error: { message: "storage down" } };
+          const names = [...state.files.keys()].filter((k) => k.startsWith(`${prefix}/`)).map((k) => ({ name: k.slice(prefix.length + 1) }));
+          return { data: names, error: null };
+        },
         remove: async (paths: string[]) => {
           if (state.removeFails) return { data: null, error: { message: "storage down" } };
           for (const p of paths) state.files.delete(p);
@@ -165,6 +171,7 @@ beforeEach(() => {
   state.downloadError = null;
   state.removeFails = false;
   state.deleteFails = false;
+  state.listFails = false;
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 
@@ -290,6 +297,44 @@ describe("POST /api/projects/:id/knowledge/upload-url", () => {
     state.sources = [sourceRow({})];
     await uploadUrl(post(uploadBody), ctx(PROJECT));
     expect(state.sources).toHaveLength(2);
+  });
+});
+
+describe("upload-url orphan sweep", () => {
+  const orphan = `${PROJECT}/22222222-2222-4222-8222-222222222222.pdf`;
+  const foreign = `${OTHER_PROJECT}/33333333-3333-4333-8333-333333333333.pdf`;
+
+  test("removes a file uploaded after its source was deleted", async () => {
+    const first = await (await uploadUrl(post(uploadBody), ctx(PROJECT))).json();
+    expect((await remove(new Request("http://localhost/x"), ctx(first.sourceId))).status).toBe(200);
+    state.files.set(first.path, bytes("%PDF-late")); // the signed URL still works
+    expect((await uploadUrl(post(uploadBody), ctx(PROJECT))).status).toBe(200);
+    expect(state.files.has(first.path)).toBe(false);
+  });
+
+  test("keeps files that have a source row, whatever its status, and other projects' files", async () => {
+    const kept = ["uploading", "processing", "ready"].map((status, i) => {
+      const id = `4444444${i}-4444-4444-8444-444444444444`;
+      state.sources.push(sourceRow({ id, status, storage_key: `${PROJECT}/${id}.pdf` }));
+      return `${PROJECT}/${id}.pdf`;
+    });
+    state.accounts = [{ clerk_user_id: "user_1", plan: "pro" }];
+    for (const key of [...kept, orphan, foreign]) state.files.set(key, bytes("%PDF-"));
+    await uploadUrl(post(uploadBody), ctx(PROJECT));
+    expect([...state.files.keys()].sort()).toEqual([...kept, foreign].sort());
+  });
+
+  test("sweeps nothing for another owner's project", async () => {
+    state.files.set(foreign, bytes("%PDF-"));
+    expect((await uploadUrl(post(uploadBody), ctx(OTHER_PROJECT))).status).toBe(404);
+    expect(state.files.has(foreign)).toBe(true);
+  });
+
+  test.each(["listFails", "removeFails"] as const)("a failed sweep (%s) doesn't block the upload", async (flag) => {
+    state.files.set(orphan, bytes("%PDF-"));
+    state[flag] = true;
+    expect((await uploadUrl(post(uploadBody), ctx(PROJECT))).status).toBe(200);
+    expect(state.files.has(orphan)).toBe(true);
   });
 });
 

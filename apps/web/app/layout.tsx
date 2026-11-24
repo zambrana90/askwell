@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { APP_NAME } from "@askwell/shared";
+import { PosthogGate } from "../components/analytics/posthog-gate";
 import "./globals.css";
 
 export const metadata: Metadata = { title: APP_NAME };
@@ -9,7 +10,10 @@ export const metadata: Metadata = { title: APP_NAME };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>{children}</body>
+      <body>
+        <PosthogGate />
+        {children}
+      </body>
     </html>
   );
 }

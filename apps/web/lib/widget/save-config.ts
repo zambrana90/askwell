@@ -52,13 +52,18 @@ export async function saveWidgetConfig(projectId: string, patch: UpdateConfigReq
   const db = createServiceClient();
   const columns = toColumns(patch);
 
-  const { data: updated, error } = await db
-    .from("widget_configs")
-    .update(columns)
-    .eq("project_id", projectId)
-    .select(COLUMNS)
-    .maybeSingle();
-  if (error) throw new Error(`saveWidgetConfig update failed: ${error.message}`);
+  const update = async () => {
+    const { data, error } = await db
+      .from("widget_configs")
+      .update(columns)
+      .eq("project_id", projectId)
+      .select(COLUMNS)
+      .maybeSingle();
+    if (error) throw new Error(`saveWidgetConfig update failed: ${error.message}`);
+    return data;
+  };
+
+  const updated = await update();
   if (updated) return toConfig(updated);
 
   const { data: inserted, error: insertError } = await db
@@ -75,6 +80,15 @@ export async function saveWidgetConfig(projectId: string, patch: UpdateConfigReq
     })
     .select(COLUMNS)
     .single();
-  if (insertError) throw new Error(`saveWidgetConfig insert failed: ${insertError.message}`);
+  if (insertError) {
+    // A concurrent first save inserted the row between our update and insert (unique violation
+    // on project_id). Retry the update on that row instead of failing or overwriting it with
+    // defaults, so neither save is lost and no saved value is reset (an upsert would reset them).
+    if (insertError.code === "23505") {
+      const retried = await update();
+      if (retried) return toConfig(retried);
+    }
+    throw new Error(`saveWidgetConfig insert failed: ${insertError.message}`);
+  }
   return toConfig(inserted);
 }

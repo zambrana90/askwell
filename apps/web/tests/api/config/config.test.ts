@@ -16,6 +16,7 @@ vi.mock("../../../lib/projects/projects", async (importOriginal) => ({
 // Service client: records writes. Never reached before the ownership and plan checks.
 type Result = { data: unknown; error: unknown };
 let updateResult: Result;
+let updateResults: Result[] = [];
 let insertResult: Result;
 const writes: Array<[string, unknown]> = [];
 const serviceClient = vi.fn(() => ({
@@ -25,7 +26,7 @@ const serviceClient = vi.fn(() => ({
       const b: Record<string, unknown> = {};
       b.eq = (...a: unknown[]) => (writes.push([`${table}.eq`, a]), b);
       b.select = () => b;
-      b.maybeSingle = () => Promise.resolve(updateResult);
+      b.maybeSingle = () => Promise.resolve(updateResults.length ? updateResults.shift()! : updateResult);
       return b;
     },
     insert: (row: unknown) => {
@@ -56,6 +57,7 @@ const stored = {
 
 beforeEach(() => {
   writes.length = 0;
+  updateResults = [];
   serviceClient.mockClear();
   authMock.mockReset().mockResolvedValue({ userId: "user_1" });
   getOwnedProject.mockReset().mockResolvedValue({ id: ID });
@@ -149,6 +151,27 @@ describe("PATCH /api/projects/:id/config", () => {
       header_text: DEFAULT_WIDGET_CONFIG.headerText,
       show_badge: DEFAULT_WIDGET_CONFIG.showBadge,
     });
+  });
+
+  test("a concurrent first save (unique violation on insert) retries the update instead of failing", async () => {
+    updateResults = [
+      { data: null, error: null }, // no row yet
+      { data: { ...stored, label: "Help" }, error: null }, // the other request inserted it; the retry updates it
+    ];
+    insertResult = { data: null, error: { code: "23505", message: "duplicate key" } };
+    const res = await patch({ label: "Help" });
+    expect(res.status).toBe(200);
+    expect((await res.json()).config.label).toBe("Help");
+    expect(writes.filter(([n]) => n === "widget_configs.update")).toHaveLength(2);
+    expect(writes.filter(([n]) => n === "widget_configs.insert")).toHaveLength(1);
+  });
+
+  test("any other insert error is still a 500", async () => {
+    updateResult = { data: null, error: null };
+    insertResult = { data: null, error: { code: "XX000", message: "secret db detail" } };
+    const res = await patch({ label: "Help" });
+    expect(res.status).toBe(500);
+    expect(JSON.stringify(await res.json())).not.toMatch(/secret/);
   });
 
   test("500 internal on a database error, no detail leaked", async () => {

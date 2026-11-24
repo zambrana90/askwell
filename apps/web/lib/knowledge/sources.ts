@@ -127,6 +127,29 @@ export async function removeOrphanFiles(projectId: string): Promise<void> {
   }
 }
 
+/** Files listed per request while removing a whole project's files. */
+const REMOVE_PAGE_SIZE = 100;
+
+/**
+ * Removes every Storage file of a project, page by page, before the project is deleted.
+ * The caller MUST pass the id of a project it has proved the signed-in owner owns: it is the
+ * only thing that scopes the removal. Throws if Storage fails or removes nothing.
+ */
+export async function removeProjectFiles(projectId: string): Promise<void> {
+  // An empty prefix would list the whole bucket.
+  if (!projectId) throw new Error("removeProjectFiles needs a project id");
+  const bucket = createServiceClient().storage.from(KNOWLEDGE_BUCKET);
+  for (;;) {
+    // Always the first page: what was listed before is gone.
+    const { data: files, error: listError } = await bucket.list(projectId, { limit: REMOVE_PAGE_SIZE });
+    if (listError) throw new Error(`removeProjectFiles list failed: ${listError.message}`);
+    if (files.length === 0) return;
+    const { data: removed, error } = await bucket.remove(files.map((f) => `${projectId}/${f.name}`));
+    if (error) throw new Error(`removeProjectFiles remove failed: ${error.message}`);
+    if (removed.length === 0) throw new Error("removeProjectFiles removed nothing");
+  }
+}
+
 /**
  * Removes a source: its Storage object (if any), then the row (chunks cascade).
  * Caller MUST have proved ownership (owner-client read, or getOwnedProject).

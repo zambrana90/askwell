@@ -7,6 +7,7 @@ const refresh = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh }),
   usePathname: () => "/dashboard/projects/p1/conversations/c1",
+  useParams: () => ({ id: "p1", conversationId: "c1" }),
   redirect: (url: string) => {
     throw new Error(`REDIRECT:${url}`);
   },
@@ -28,6 +29,7 @@ vi.mock("../../lib/conversations/conversations", () => ({
 
 import ConversationsPage from "../../app/dashboard/projects/[id]/conversations/page";
 import ThreadPage from "../../app/dashboard/projects/[id]/conversations/[conversationId]/page";
+import ConversationNotFound from "../../app/dashboard/projects/[id]/conversations/[conversationId]/not-found";
 import { ConversationList } from "../../components/conversations/conversation-list";
 import { ConversationThread } from "../../components/conversations/conversation-thread";
 import { messageTime, relativeTime, shortVisitorId } from "../../components/conversations/format";
@@ -187,6 +189,16 @@ describe("pages", () => {
     getThread.mockRejectedValueOnce(new Error("boom"));
     render(await ThreadPage(threadParams));
     expect(screen.getByRole("alert").textContent).toMatch(/couldn't load this conversation/i);
+  });
+});
+
+describe("not found", () => {
+  test("the back link goes to this project's conversation list, not the project page", () => {
+    render(<ConversationNotFound />);
+    expect(screen.getByText("Conversation not found")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Back to conversations" }).getAttribute("href")).toBe(
+      "/dashboard/projects/p1/conversations",
+    );
   });
 });
 

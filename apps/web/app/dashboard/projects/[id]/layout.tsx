@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ProjectNotFound } from "../../../../components/projects/project-not-found";
 import { ProjectSubnav } from "../../../../components/projects/project-subnav";
 import { loadOwnedProject } from "../../../../components/projects/owned-project";
+import { MUTED_LINK } from "../../../../components/ui/interactive";
 
 export default async function ProjectLayout({
   children,
@@ -17,7 +18,7 @@ export default async function ProjectLayout({
 
   return (
     <>
-      <Link href="/dashboard" className="inline-flex min-h-10 items-center text-sm text-ink-muted hover:text-ink">
+      <Link href="/dashboard" className={`inline-flex min-h-10 items-center text-sm text-ink-muted ${MUTED_LINK}`}>
         ← Projects
       </Link>
       <h1 className="mb-4 text-2xl font-semibold wrap-anywhere">{project.name}</h1>

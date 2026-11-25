@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { trackSnippetCopied } from "../../lib/analytics/client";
 import { Button } from "../ui/button";
+import { FOCUS_RING } from "../ui/interactive";
 import { Panel } from "../ui/panel";
 
 type CopyState = "idle" | "copied" | "manual";
@@ -43,7 +44,7 @@ export function InstallSnippet({ snippet }: { snippet: string }) {
   return (
     <Panel className="p-4">
       <pre className="whitespace-pre-wrap break-all rounded-glass border border-glass-edge bg-canvas p-3 text-sm">
-        <code ref={codeRef} tabIndex={0} aria-label="Install snippet">
+        <code ref={codeRef} tabIndex={0} aria-label="Install snippet" className={`rounded-sm ${FOCUS_RING}`}>
           {snippet}
         </code>
       </pre>

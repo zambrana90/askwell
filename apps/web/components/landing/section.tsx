@@ -8,17 +8,28 @@ const EYEBROWS: Record<string, string> = {
   install: "Setup",
 };
 
-type SectionProps = { id: string; title: string; intro?: string; eyebrow?: string; children?: ReactNode };
+type SectionProps = {
+  id: string;
+  title: string;
+  intro?: string;
+  eyebrow?: string;
+  /** How the heading and intro are aligned. The children place themselves. */
+  align?: "left" | "center";
+  children?: ReactNode;
+};
 
-export function Section({ id, title, intro, eyebrow = EYEBROWS[id], children }: SectionProps) {
+export function Section({ id, title, intro, eyebrow = EYEBROWS[id], align = "left", children }: SectionProps) {
+  const center = align === "center";
   return (
     // scroll-mt clears the sticky header when jumping to a section.
     <section id={id} aria-labelledby={`${id}-title`} className="reveal mx-auto max-w-5xl scroll-mt-16 px-4 py-16 md:py-24">
-      {eyebrow ? <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-ink-muted">{eyebrow}</p> : null}
-      <h2 id={`${id}-title`} className="text-3xl font-semibold tracking-tight md:text-4xl">
+      {eyebrow ? (
+        <p className={`mb-3 text-xs font-medium uppercase tracking-[0.2em] text-ink-muted${center ? " text-center" : ""}`}>{eyebrow}</p>
+      ) : null}
+      <h2 id={`${id}-title`} className={`text-3xl font-semibold tracking-tight md:text-4xl${center ? " text-center" : ""}`}>
         {title}
       </h2>
-      {intro ? <p className="mt-4 max-w-2xl text-ink-muted">{intro}</p> : null}
+      {intro ? <p className={`mt-4 max-w-2xl text-ink-muted${center ? " mx-auto text-center" : ""}`}>{intro}</p> : null}
       {children ? <div className="mt-10">{children}</div> : null}
     </section>
   );

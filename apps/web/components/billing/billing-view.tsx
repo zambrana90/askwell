@@ -4,6 +4,7 @@ import { PricingTable, useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Plan } from "@askwell/shared";
+import { APPEARANCE } from "../auth/appearance";
 import { Button } from "../ui/button";
 import { Panel } from "../ui/panel";
 import { Skeleton, Spinner } from "../ui/spinner";
@@ -13,18 +14,6 @@ import { PLAN_NAME, planIncludes, priceLabel } from "./plan-summary";
 export const CHECKOUT_DONE_URL = "/dashboard/billing?checkout=done";
 export const POLL_INTERVAL_MS = 2000;
 export const POLL_MAX_MS = 30_000;
-
-/** Clerk's table follows the dashboard's light and dark tokens. */
-const PRICING_APPEARANCE = {
-  variables: {
-    colorBackground: "var(--canvas)",
-    colorForeground: "var(--ink)",
-    colorMutedForeground: "var(--ink-muted)",
-    colorNeutral: "var(--ink)",
-    colorPrimary: "var(--brand)",
-    colorPrimaryForeground: "var(--brand-ink)",
-  },
-};
 
 const pricingFallback = (
   <div>
@@ -106,7 +95,8 @@ export function BillingView({ plan, checkoutDone = false, pollMs = POLL_INTERVAL
           </h2>
           <PricingTable
             newSubscriptionRedirectUrl={CHECKOUT_DONE_URL}
-            appearance={PRICING_APPEARANCE}
+            appearance={APPEARANCE}
+            checkoutProps={{ appearance: APPEARANCE }}
             fallback={pricingFallback}
           />
         </section>

@@ -1,5 +1,5 @@
 import { widgetConfigQuerySchema } from "@askwell/shared";
-import { WIDGET_SCRIPT_PATH } from "@askwell/shared/embed";
+import { LandingWidgetScript } from "./landing-widget-script";
 
 /**
  * The public key of the project about the app itself. Read from the environment on every
@@ -12,8 +12,8 @@ export function landingWidgetKey(): string | null {
   return parsed.success ? parsed.data.key : null;
 }
 
-/** The app's own widget: the same script tag customers paste. Nothing renders without a key. */
+/** The app's own widget: the same script customers paste, while this page is shown. Nothing without a key. */
 export function LandingWidget({ widgetKey }: { widgetKey: string | null }) {
   if (!widgetKey) return null;
-  return <script src={WIDGET_SCRIPT_PATH} data-key={widgetKey} async />;
+  return <LandingWidgetScript widgetKey={widgetKey} />;
 }

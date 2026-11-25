@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
+import { APPEARANCE } from "./appearance";
 
 /**
  * The one ClerkProvider config for the app. It wraps only the pages that need Clerk
@@ -9,6 +10,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 export function AppClerkProvider({ children }: { children: ReactNode }) {
   return (
     <ClerkProvider
+      appearance={APPEARANCE}
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
       signInFallbackRedirectUrl="/dashboard"

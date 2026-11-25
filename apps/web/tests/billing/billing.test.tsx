@@ -22,6 +22,7 @@ vi.mock("@clerk/nextjs/server", () => ({ auth: () => authMock() }));
 const getPlan = vi.fn();
 vi.mock("../../lib/projects/projects", () => ({ getPlan: (id: string) => getPlan(id) }));
 
+import { APPEARANCE } from "../../components/auth/appearance";
 import { BillingView, CHECKOUT_DONE_URL } from "../../components/billing/billing-view";
 import { planIncludes, priceLabel } from "../../components/billing/plan-summary";
 import BillingPage from "../../app/dashboard/billing/page";
@@ -59,6 +60,10 @@ describe("BillingView", () => {
     expect(screen.getByTestId("current-plan").textContent).toBe("Free");
     expect(screen.getByTestId("pricing-table")).toBeTruthy();
     expect(pricingTable).toHaveBeenCalledWith(expect.objectContaining({ newSubscriptionRedirectUrl: CHECKOUT_DONE_URL }));
+    // The checkout drawer gets the same look as the table.
+    expect(pricingTable).toHaveBeenCalledWith(
+      expect.objectContaining({ appearance: APPEARANCE, checkoutProps: { appearance: APPEARANCE } }),
+    );
     expect(screen.queryByRole("button", { name: "Manage subscription" })).toBeNull();
     expect(screen.queryByText("Updating your plan…")).toBeNull();
   });

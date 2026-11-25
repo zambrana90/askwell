@@ -20,7 +20,7 @@ This file is the source of truth for **what** we build. `docs/plan.md` says **in
 
 The whole product in one flow. When this works end to end, the product is done.
 
-1. Open the landing page. The app's own chat widget is in the corner.
+1. Open the landing page. The live demo section has the app's own chat, open and ready.
 2. Ask it a product question. It answers from its knowledge.
 3. Sign up. Create a project. Upload a product PDF in Knowledge.
 4. Copy the script tag from Install. Paste it into a plain HTML page. The widget appears.
@@ -97,7 +97,7 @@ The whole product in one flow. When this works end to end, the product is done.
 
 | Item      | Detail                                                                                      |
 | --------- | ------------------------------------------------------------------------------------------- |
-| Sections  | Hero, how it works (3 steps), live demo (the real widget), pricing, install snippet, footer |
+| Sections  | Hero, how it works (3 steps), live demo (the real chat, open in the page), pricing, install snippet, footer |
 | Widget    | An open chat panel in the live demo section, using the app's own project about Askwell; shows a short sample conversation, then answers live |
 | CTA       | "Start free" → sign up                                                                      |
 | Done when | Page is responsive, pricing matches section 5, chat answers in the demo section             |

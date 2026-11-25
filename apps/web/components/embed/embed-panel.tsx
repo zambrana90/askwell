@@ -175,7 +175,9 @@ export function EmbedPanel({
         role="log"
         aria-live="polite"
         aria-label="Conversation"
-        className="flex-1 overflow-y-auto"
+        // Focusable, so keyboard users can scroll it. The ring is inset: the panel clips outside it.
+        tabIndex={0}
+        className="flex-1 overflow-y-auto focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
       >
         <div ref={contentRef} className="flex flex-col gap-2 px-4 py-4">
         {initialMessages.map((message, index) => (

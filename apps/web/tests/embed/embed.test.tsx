@@ -7,6 +7,10 @@ vi.mock("server-only", () => ({}));
 const getConfig = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/widget/config", () => ({ getWidgetConfigByKey: getConfig }));
 
+const protectConfig = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/security/arcjet", () => ({ protectConfig }));
+vi.mock("next/headers", () => ({ headers: async () => new Headers({ "x-forwarded-for": "203.0.113.7" }) }));
+
 const send = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/embed/chat", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../lib/embed/chat")>()),
@@ -14,6 +18,7 @@ vi.mock("../../lib/embed/chat", async (importOriginal) => ({
 }));
 
 import EmbedPage from "../../app/embed/page";
+import { Unavailable } from "../../app/embed/unavailable";
 import { EmbedPanel } from "../../components/embed/embed-panel";
 import { ChatError } from "../../lib/embed/chat";
 import { parseHostOrigin } from "../../lib/embed/origin";
@@ -32,6 +37,7 @@ beforeEach(() => {
   parentPost.mockClear();
   send.mockReset();
   getConfig.mockReset();
+  protectConfig.mockReset().mockResolvedValue("allow");
   Object.defineProperty(window, "parent", { configurable: true, value: fakeParent });
 });
 afterEach(() => {
@@ -74,12 +80,67 @@ describe("/embed page", () => {
     expect(await run({ key: KEY })).toBeNull();
   });
 
+  test("over the rate limit: the unavailable state, and no database read", async () => {
+    protectConfig.mockResolvedValue("rate_limited");
+    render(await run({ key: KEY, origin: HOST }));
+    expect(screen.getByRole("status").textContent).toMatch(/unavailable/i);
+    expect(screen.queryByLabelText("Your message")).toBeNull();
+    expect(getConfig).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Close chat" }));
+    expect(parentPost).toHaveBeenCalledWith({ type: "askwell:close" }, HOST);
+  });
+
+  test("the limit is checked before the read, with the key and the visitor's headers", async () => {
+    const order: string[] = [];
+    protectConfig.mockImplementation(async () => (order.push("limit"), "allow"));
+    getConfig.mockImplementation(async () => (order.push("read"), config));
+    await run({ key: KEY });
+    expect(order).toEqual(["limit", "read"]);
+    const [request, input] = protectConfig.mock.calls[0]!;
+    expect(input).toEqual({ publicKey: KEY });
+    expect(request.headers.get("x-forwarded-for")).toBe("203.0.113.7");
+  });
+
+  test("a bad key is not counted against the limit", async () => {
+    await run({ key: "nope" });
+    expect(protectConfig).not.toHaveBeenCalled();
+  });
+
   test("a good key renders the panel with the header text", async () => {
     getConfig.mockResolvedValue(config);
     const ui = await run({ key: KEY, origin: HOST });
     render(ui);
     expect(screen.getByRole("heading", { name: "Hi there" })).toBeTruthy();
     expect(getConfig).toHaveBeenCalledWith(KEY);
+  });
+});
+
+describe.each([
+  ["panel", () => <EmbedPanel publicKey={KEY} config={config} hostOrigin={HOST} />],
+  ["unavailable state", () => <Unavailable hostOrigin={HOST} />],
+])("Escape in the %s", (_name, ui) => {
+  const closes = () => parentPost.mock.calls.filter(([message]) => message.type === "askwell:close");
+
+  test("closes when nothing is focused and the key goes to the body", () => {
+    render(ui());
+    expect(document.activeElement).toBe(document.body);
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(closes()).toEqual([[{ type: "askwell:close" }, HOST]]);
+  });
+
+  test("closes once from a focused control; not while composing or on other keys", () => {
+    render(ui());
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    fireEvent.keyDown(document.body, { key: "Escape", isComposing: true });
+    expect(closes()).toEqual([]);
+    fireEvent.keyDown(screen.getByRole("button", { name: "Close chat" }), { key: "Escape" });
+    expect(closes()).toHaveLength(1);
+  });
+
+  test("stops listening after unmount", () => {
+    render(ui()).unmount();
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(closes()).toEqual([]);
   });
 });
 

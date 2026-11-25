@@ -7,6 +7,7 @@ import { ChatError, chatErrorMessage, sendMessage } from "../../lib/embed/chat";
 import { getVisitorId } from "../../lib/embed/visitor";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
+import { useEscapeToClose } from "./use-escape-to-close";
 
 type Props = {
   publicKey: string;
@@ -33,6 +34,8 @@ export function EmbedPanel({ publicKey, config, hostOrigin }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  useEscapeToClose(hostOrigin);
 
   // The loader tells us when the panel is shown or hidden. Shown: reset the
   // unread count and focus the input.
@@ -109,14 +112,7 @@ export function EmbedPanel({ publicKey, config, hostOrigin }: Props) {
   }
 
   return (
-    <div
-      ref={rootRef}
-      className="theme-auto flex h-dvh flex-col bg-canvas text-ink"
-      // Keys pressed inside the iframe never reach the host page, so Escape asks the loader to close.
-      onKeyDown={(event) => {
-        if (event.key === "Escape" && !event.nativeEvent.isComposing) postToHost({ type: "askwell:close" }, hostOrigin);
-      }}
-    >
+    <div ref={rootRef} className="theme-auto flex h-dvh flex-col bg-canvas text-ink">
       <header className="flex items-center justify-between gap-2 border-b border-glass-edge bg-glass px-4 py-3 backdrop-blur-glass">
         <h1 className="truncate text-base font-semibold">{config.headerText}</h1>
         <Button

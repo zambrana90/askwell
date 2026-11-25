@@ -4,6 +4,7 @@
 -- Both functions now read the project's chunks through the project/source btree indexes into a
 -- MATERIALIZED CTE and sort them by exact distance: the HNSW index cannot serve that order, so
 -- there is no scan limit. Cost grows with one project's chunk count, not with the table.
+-- exact by design; revisit HNSW if a project passes ~50k chunks
 -- Only ids and distances are materialized; content is read for the returned rows only.
 --
 -- Additive: same signatures, return types, volatility, SECURITY INVOKER, empty search_path.

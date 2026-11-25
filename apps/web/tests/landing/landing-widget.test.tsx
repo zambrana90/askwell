@@ -66,12 +66,13 @@ describe("landing page", () => {
     expect(pageModule.dynamic).toBe("force-dynamic");
   });
 
-  test("with the key set: the script tag is on the page and Demo points to the corner button", () => {
+  test("with the key set: the script is added in the browser and Demo points to the corner button", () => {
     vi.stubEnv("LANDING_WIDGET_KEY", KEY);
-    // Server render, as the request does: React puts the script in the document head.
     const html = renderToStaticMarkup(<Home />);
-    expect(html).toMatch(new RegExp(`<script[^>]*src="/widget.js"[^>]*data-key="${KEY}"|<script[^>]*data-key="${KEY}"[^>]*src="/widget.js"`));
-    expect(html.match(/<script/g)).toHaveLength(1);
+    // The client component adds the script on mount, so the server HTML has none.
+    expect(html).not.toContain("<script");
+    render(<Home />);
+    expect(scripts().map((s) => s.dataset.key)).toEqual([KEY]);
     expect(html).toContain("the chat button in the corner of this page is the real");
     expect(html).not.toContain("Preview of the chat widget"); // no static mock
   });

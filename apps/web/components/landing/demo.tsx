@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { APP_NAME, PLAN_LIMITS, PLAN_PRICES_USD_MONTHLY, type Plan, type WidgetConfig } from "@askwell/shared";
 import { EmbedPanel, type InitialMessage } from "../embed/embed-panel";
 import { Spinner } from "../ui/spinner";
+import { PhoneFrame } from "./phone-frame";
 import { Section } from "./section";
 
 const count = (value: number, noun: string) =>
@@ -28,8 +29,8 @@ export const SAMPLE_DIVIDER = "Your turn: ask anything";
 
 function Frame({ intro, children }: { intro?: string; children?: React.ReactNode }) {
   return (
-    <Section id="demo" title="Live demo" intro={intro}>
-      {children ? <div className="max-w-2xl">{children}</div> : null}
+    <Section id="demo" title="Live demo" intro={intro} align="center">
+      {children ? <PhoneFrame>{children}</PhoneFrame> : null}
     </Section>
   );
 }
@@ -80,7 +81,7 @@ export function Demo({ widgetKey }: { widgetKey: string | null }) {
     <Suspense
       fallback={
         <Frame>
-          <p role="status" className="flex h-[460px] items-center justify-center gap-2 text-sm text-ink-muted md:h-[520px]">
+          <p role="status" className="flex h-full items-center justify-center gap-2 text-sm text-ink-muted">
             <Spinner />
             Loading the demo…
           </p>

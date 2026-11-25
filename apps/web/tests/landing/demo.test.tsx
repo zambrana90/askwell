@@ -1,4 +1,5 @@
 import { cleanup, render, screen } from "@testing-library/react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { DEFAULT_WIDGET_CONFIG, PLAN_LIMITS, PLAN_PRICES_USD_MONTHLY } from "@askwell/shared";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -61,6 +62,16 @@ describe("LiveDemo", () => {
     expect(send).not.toHaveBeenCalled(); // the script is never sent
   });
 
+  test("sits in the phone frame, filling its screen, under a centered heading", async () => {
+    const { container } = render(await LiveDemo({ widgetKey: KEY }));
+    const screenArea = container.querySelector('[data-phone="screen"]')!;
+    expect(screenArea.contains(screen.getByRole("log"))).toBe(true);
+    expect(screenArea.contains(screen.getByLabelText("Your message"))).toBe(true);
+    expect(screen.getByRole("heading", { name: "Live demo" }).className).toContain("text-center");
+    // Only the heading text is centered: the chat keeps its own alignment.
+    expect(screenArea.closest(".text-center")).toBeNull();
+  });
+
   test("no config for the key: not available", async () => {
     getConfig.mockResolvedValue(null);
     render(await LiveDemo({ widgetKey: KEY }));
@@ -87,6 +98,13 @@ describe("LiveDemo", () => {
 test("Demo without a key: not available, and nothing is read", () => {
   render(<Demo widgetKey={null} />);
   expect(screen.getByRole("heading", { name: "Live demo" })).toBeTruthy();
-  expect(screen.getByText(NOT_AVAILABLE)).toBeTruthy();
+  expect(screen.getByText(NOT_AVAILABLE).className).toContain("text-center");
+  expect(document.querySelector("[data-phone]")).toBeNull(); // no empty phone
   expect(getConfig).not.toHaveBeenCalled();
+});
+
+test("while loading: the status shows inside the phone frame", () => {
+  const html = renderToStaticMarkup(<Demo widgetKey={KEY} />);
+  const page = new DOMParser().parseFromString(html, "text/html");
+  expect(page.querySelector('[data-phone="screen"] [role="status"]')?.textContent).toContain("Loading the demo");
 });

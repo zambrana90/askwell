@@ -14,14 +14,49 @@ type Props = {
   config: WidgetConfig;
   /** Validated host origin, or null (then nothing is posted to the parent). */
   hostOrigin: string | null;
+  /**
+   * Render as part of a page instead of inside the widget's iframe: always shown, a fixed
+   * height, no close button, and nothing posted to or heard from a host.
+   */
+  inline?: boolean;
+  /** Sample messages shown above the conversation. Display only: never sent or stored. */
+  initialMessages?: readonly InitialMessage[];
+  /** A small divider under the sample messages. */
+  initialDivider?: string;
 };
 
-type ChatMessage = { id: number; from: "visitor" | "bot"; text: string };
+export type InitialMessage = { from: "visitor" | "bot"; text: string };
+
+type ChatMessage = InitialMessage & { id: number };
 
 const MIN_HEIGHT = 320;
 const MAX_HEIGHT = 640;
 
-export function EmbedPanel({ publicKey, config, hostOrigin }: Props) {
+/** One message. Plain text only: React escapes it; never HTML. */
+function Bubble({ from, text, className = "" }: InitialMessage & { className?: string }) {
+  return (
+    <p
+      data-from={from}
+      className={`max-w-[85%] whitespace-pre-wrap break-words rounded-glass px-3 py-2 text-sm ${
+        from === "visitor" ? "self-end bg-accent text-accent-ink" : "self-start border border-glass-edge bg-glass"
+      }${className}`}
+    >
+      {text}
+    </p>
+  );
+}
+
+export function EmbedPanel({
+  publicKey,
+  config,
+  hostOrigin: framingOrigin,
+  inline = false,
+  initialMessages = [],
+  initialDivider,
+}: Props) {
+  // Inline there is no host: every bridge call below does nothing without an origin.
+  const hostOrigin = inline ? null : framingOrigin;
+  const Heading = inline ? "h3" : "h1";
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [typing, setTyping] = useState(false);
@@ -112,17 +147,27 @@ export function EmbedPanel({ publicKey, config, hostOrigin }: Props) {
   }
 
   return (
-    <div ref={rootRef} className="theme-auto flex h-dvh flex-col bg-canvas text-ink">
+    <div
+      ref={rootRef}
+      // Inline, the panel takes the page's theme and its glass card look.
+      className={
+        inline
+          ? "flex h-[460px] flex-col overflow-hidden rounded-glass border border-glass-edge bg-canvas text-ink shadow-glass md:h-[520px]"
+          : "theme-auto flex h-dvh flex-col bg-canvas text-ink"
+      }
+    >
       <header className="flex items-center justify-between gap-2 border-b border-glass-edge bg-glass px-4 py-3 backdrop-blur-glass">
-        <h1 className="truncate text-base font-semibold">{config.headerText}</h1>
-        <Button
-          variant="ghost"
-          aria-label="Close chat"
-          className="size-10 shrink-0 px-0"
-          onClick={() => postToHost({ type: "askwell:close" }, hostOrigin)}
-        >
-          <span aria-hidden="true">✕</span>
-        </Button>
+        <Heading className="truncate text-base font-semibold">{config.headerText}</Heading>
+        {inline ? null : (
+          <Button
+            variant="ghost"
+            aria-label="Close chat"
+            className="size-10 shrink-0 px-0"
+            onClick={() => postToHost({ type: "askwell:close" }, hostOrigin)}
+          >
+            <span aria-hidden="true">✕</span>
+          </Button>
+        )}
       </header>
 
       <div
@@ -133,22 +178,25 @@ export function EmbedPanel({ publicKey, config, hostOrigin }: Props) {
         className="flex-1 overflow-y-auto"
       >
         <div ref={contentRef} className="flex flex-col gap-2 px-4 py-4">
-        {messages.length === 0 ? (
+        {initialMessages.map((message, index) => (
+          <Bubble key={`initial-${index}`} from={message.from} text={message.text} />
+        ))}
+        {initialDivider ? (
+          <p className="flex items-center gap-3 py-2 text-xs text-ink-muted before:h-px before:flex-1 before:bg-glass-edge after:h-px after:flex-1 after:bg-glass-edge">
+            {initialDivider}
+          </p>
+        ) : null}
+        {messages.length === 0 && initialMessages.length === 0 ? (
           <p className="py-8 text-center text-sm text-ink-muted">Ask a question to get started.</p>
         ) : null}
         {messages.map((message) => (
-          <p
+          <Bubble
             key={message.id}
-            data-from={message.from}
-            // Plain text only: React escapes it; never HTML.
-            className={`max-w-[85%] whitespace-pre-wrap break-words rounded-glass px-3 py-2 text-sm ${
-              message.from === "visitor"
-                ? "self-end bg-accent text-accent-ink"
-                : "self-start border border-glass-edge bg-glass"
-            }`}
-          >
-            {message.text}
-          </p>
+            from={message.from}
+            text={message.text}
+            // Inline, the chat is on a page with session replay: keep what is said out of it.
+            className={inline ? " ph-no-capture" : ""}
+          />
         ))}
         {typing ? (
           <p

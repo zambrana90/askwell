@@ -98,9 +98,9 @@ The whole product in one flow. When this works end to end, the product is done.
 | Item      | Detail                                                                                      |
 | --------- | ------------------------------------------------------------------------------------------- |
 | Sections  | Hero, how it works (3 steps), live demo (the real widget), pricing, install snippet, footer |
-| Widget    | Runs the app's own widget with a project about Askwell itself                               |
+| Widget    | An open chat panel in the live demo section, using the app's own project about Askwell; shows a short sample conversation, then answers live |
 | CTA       | "Start free" → sign up                                                                      |
-| Done when | Page is responsive, pricing matches section 5, widget opens and answers                     |
+| Done when | Page is responsive, pricing matches section 5, chat answers in the demo section             |
 
 ### 6.2 Auth
 

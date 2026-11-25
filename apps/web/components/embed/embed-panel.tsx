@@ -15,8 +15,8 @@ type Props = {
   /** Validated host origin, or null (then nothing is posted to the parent). */
   hostOrigin: string | null;
   /**
-   * Render as part of a page instead of inside the widget's iframe: always shown, a fixed
-   * height, no close button, and nothing posted to or heard from a host.
+   * Render as part of a page instead of inside the widget's iframe: always shown, as tall as
+   * its container, no close button, and nothing posted to or heard from a host.
    */
   inline?: boolean;
   /** Sample messages shown above the conversation. Display only: never sent or stored. */
@@ -149,10 +149,10 @@ export function EmbedPanel({
   return (
     <div
       ref={rootRef}
-      // Inline, the panel takes the page's theme and its glass card look.
+      // Inline, the panel takes the page's theme and fills its container, which draws the frame.
       className={
         inline
-          ? "flex h-[460px] flex-col overflow-hidden rounded-glass border border-glass-edge bg-canvas text-ink shadow-glass md:h-[520px]"
+          ? "flex h-full flex-col overflow-hidden bg-canvas text-ink"
           : "theme-auto flex h-dvh flex-col bg-canvas text-ink"
       }
     >

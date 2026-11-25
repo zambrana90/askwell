@@ -59,12 +59,12 @@ describe("inline mode", () => {
     expect(listen.mock.calls.filter(([type]) => type === "message")).toEqual([]);
   });
 
-  test("has a fixed height, takes the page's theme, and does not take focus", () => {
+  test("fills its container, takes the page's theme, and does not take focus", () => {
     const { container } = render(panel());
     const root = container.firstElementChild!;
-    expect(root.className).toContain("h-[460px]");
-    expect(root.className).toContain("md:h-[520px]");
-    expect(root.className).not.toMatch(/h-dvh|theme-auto/);
+    expect(root.className.split(" ")).toContain("h-full");
+    // No size of its own, and no frame: the container draws it.
+    expect(root.className).not.toMatch(/h-dvh|h-\[|theme-auto|rounded|border|shadow/);
     expect(document.activeElement).toBe(document.body);
   });
 

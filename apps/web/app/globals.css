@@ -87,9 +87,80 @@ body {
 }
 
 /*
- * Landing-page motion. CSS only. Off when the visitor asks for reduced motion.
- * Where scroll-driven animation is supported, sections ease in as they scroll into view;
- * elsewhere they ease in once on load.
+ * Landing page only. New tokens and landing-* classes: nothing here changes a shared token,
+ * so the dashboard, sign-in and widget look the same.
+ */
+.theme-dark {
+  --landing-glow: rgb(255 255 255 / 0.13);
+  --landing-grid: rgb(255 255 255 / 0.07);
+  --landing-edge-bright: rgb(255 255 255 / 0.34);
+  --landing-edge-faint: rgb(255 255 255 / 0.07);
+  --landing-featured-bright: rgb(255 255 255 / 0.9);
+  --landing-featured-faint: rgb(255 255 255 / 0.28);
+  --landing-header-glass: rgb(5 5 5 / 0.7);
+}
+
+.landing-headline {
+  font-size: clamp(3.5rem, 1.5rem + 10vw, 8rem);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+}
+
+/* A soft grey glow over a grid that fades out. */
+.landing-backdrop {
+  background: radial-gradient(60% 55% at 50% 30%, var(--landing-glow), transparent 70%);
+}
+.landing-backdrop::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, var(--landing-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--landing-grid) 1px, transparent 1px);
+  background-size: 3.5rem 3.5rem;
+  background-position: center top;
+  mask-image: radial-gradient(65% 65% at 50% 35%, black, transparent 75%);
+}
+
+.landing-header {
+  border-bottom: 1px solid transparent;
+}
+.landing-header[data-scrolled="true"] {
+  background: var(--landing-header-glass);
+  border-bottom-color: var(--glass-edge);
+  backdrop-filter: blur(var(--blur-glass));
+}
+
+/* Glass card with a 1px gradient border: the mask leaves only the padding ring painted. */
+.landing-card {
+  position: relative;
+  border-color: transparent;
+}
+.landing-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(160deg, var(--landing-edge-bright), var(--landing-edge-faint) 55%);
+  mask:
+    linear-gradient(black, black) content-box,
+    linear-gradient(black, black);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.landing-card-featured::before {
+  background: linear-gradient(160deg, var(--landing-featured-bright), var(--landing-featured-faint) 70%);
+}
+/* overflow: hidden would clip a ring drawn outside the box. */
+.landing-terminal::before {
+  inset: 0;
+}
+
+/*
+ * Landing-page motion. CSS only, transform and opacity only (no layout shift). Off when the
+ * visitor asks for reduced motion. Where scroll-driven animation is supported, sections ease
+ * in as they scroll into view; elsewhere they ease in once on load.
  */
 @keyframes landing-rise {
   from {
@@ -103,14 +174,36 @@ body {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .reveal {
+  .reveal,
+  .landing-enter > * {
     animation: landing-rise 0.7s ease-out both;
+  }
+  .landing-enter > :nth-child(2) {
+    animation-delay: 0.08s;
+  }
+  .landing-enter > :nth-child(3) {
+    animation-delay: 0.16s;
   }
 
   @supports (animation-timeline: view()) {
     .reveal {
       animation-timeline: view();
       animation-range: entry 0% entry 35%;
+    }
+  }
+
+  .landing-header {
+    transition:
+      background-color 0.2s,
+      border-color 0.2s;
+  }
+
+  .landing-card:not(.landing-terminal) {
+    transition: transform 0.2s ease-out;
+  }
+  @media (hover: hover) {
+    .landing-card:not(.landing-terminal):hover {
+      transform: translateY(-4px);
     }
   }
 }

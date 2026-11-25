@@ -7,13 +7,18 @@ const VARIANTS = {
   ghost: "text-ink hover:bg-glass-edge",
 } as const;
 
-type LinkButtonProps = ComponentProps<typeof Link> & { variant?: keyof typeof VARIANTS };
+const SIZES = {
+  medium: "min-h-10 px-4 text-sm",
+  large: "min-h-12 px-6 text-base",
+} as const;
+
+type LinkButtonProps = ComponentProps<typeof Link> & { variant?: keyof typeof VARIANTS; size?: keyof typeof SIZES };
 
 /** A link that looks like the dashboard Button, for navigation. */
-export function LinkButton({ variant = "primary", className = "", ...props }: LinkButtonProps) {
+export function LinkButton({ variant = "primary", size = "medium", className = "", ...props }: LinkButtonProps) {
   return (
     <Link
-      className={`inline-flex min-h-10 items-center justify-center rounded-glass px-4 text-sm font-medium transition ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex items-center justify-center rounded-glass font-medium transition ${SIZES[size]} ${VARIANTS[variant]} ${className}`}
       {...props}
     />
   );

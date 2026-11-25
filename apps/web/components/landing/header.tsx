@@ -7,6 +7,7 @@ import { Show } from "@clerk/nextjs";
 import Link from "next/link";
 import { APP_NAME } from "@askwell/shared";
 import { LinkButton } from "./link-button";
+import { BRAND_LINK } from "../ui/interactive";
 
 /** True once the page has moved from the top, which is when the header needs its glass. */
 function useScrolled(): boolean {
@@ -25,7 +26,7 @@ export function LandingHeader() {
   return (
     <header className="landing-header sticky top-0 z-30" data-scrolled={scrolled}>
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
-        <Link href="/" className="inline-flex min-h-10 items-center font-semibold tracking-tight">
+        <Link href="/" className={`inline-flex min-h-10 items-center font-semibold tracking-tight ${BRAND_LINK}`}>
           {APP_NAME}
         </Link>
         <nav aria-label="Account" className="flex min-h-10 min-w-24 justify-end">

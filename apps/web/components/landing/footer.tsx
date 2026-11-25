@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { APP_NAME } from "@askwell/shared";
+import { MUTED_LINK } from "../ui/interactive";
 
 const COLUMNS = [
   {
@@ -28,7 +29,7 @@ export function Footer() {
             <ul className="mt-2">
               {column.links.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="inline-flex min-h-10 items-center hover:text-ink">
+                  <Link href={link.href} className={`inline-flex min-h-10 items-center ${MUTED_LINK}`}>
                     {link.label}
                   </Link>
                 </li>

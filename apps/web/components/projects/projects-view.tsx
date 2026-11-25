@@ -15,6 +15,7 @@ import { Panel } from "../ui/panel";
 import { pausedIds, pausedProjectNote, type PlanName } from "../../lib/plan/pause";
 import { currentUsage } from "../../lib/usage/usage";
 import { ConfirmDialog } from "./confirm-dialog";
+import { CLICKABLE, FIELD, INLINE_LINK } from "../ui/interactive";
 
 type Props = {
   initialProjects: Project[];
@@ -149,7 +150,7 @@ export function ProjectsView({ initialProjects, maxProjects, messagesPerMonth, l
               maxLength={80}
               disabled={atLimit || creating}
               placeholder="My website"
-              className="min-h-10 rounded-glass border border-glass-edge bg-canvas px-3 text-sm text-ink disabled:opacity-50"
+              className={`min-h-10 rounded-glass border border-glass-edge bg-canvas px-3 text-sm text-ink disabled:opacity-50 ${FIELD}`}
             />
           </div>
           <Button type="submit" loading={creating} disabled={atLimit || !name.trim()}>
@@ -185,7 +186,7 @@ export function ProjectsView({ initialProjects, maxProjects, messagesPerMonth, l
                       onChange={(e) => setRenameValue(e.target.value)}
                       maxLength={80}
                       autoFocus
-                      className="min-h-10 flex-1 rounded-glass border border-glass-edge bg-canvas px-3 text-sm text-ink"
+                      className={`min-h-10 flex-1 rounded-glass border border-glass-edge bg-canvas px-3 text-sm text-ink ${FIELD}`}
                     />
                     <div className="flex gap-2">
                       <Button type="submit" loading={renaming} disabled={!renameValue.trim()}>
@@ -206,7 +207,7 @@ export function ProjectsView({ initialProjects, maxProjects, messagesPerMonth, l
                     <div className="min-w-0">
                       <Link
                         href={`/dashboard/projects/${p.id}`}
-                        className="flex min-h-10 items-center font-medium wrap-anywhere hover:underline"
+                        className={`flex min-h-10 items-center rounded-sm font-medium wrap-anywhere ${CLICKABLE} underline-offset-4 hover:underline active:opacity-70`}
                       >
                         {p.name}
                       </Link>
@@ -225,7 +226,7 @@ export function ProjectsView({ initialProjects, maxProjects, messagesPerMonth, l
                         <p data-testid="paused-note" className="mt-1 text-sm text-ink-muted">
                           {pausedProjectNote(planName, maxProjects)}{" "}
                           {planName === "Free" ? (
-                            <Link href="/dashboard/billing" className="underline">
+                            <Link href="/dashboard/billing" className={INLINE_LINK}>
                               Upgrade
                             </Link>
                           ) : null}

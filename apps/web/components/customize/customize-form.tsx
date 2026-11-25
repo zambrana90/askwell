@@ -15,6 +15,7 @@ import { Button } from "../ui/button";
 import { Panel } from "../ui/panel";
 import { POSITION_LABELS, isHexColor } from "./preview-utils";
 import { WidgetPreview } from "./widget-preview";
+import { FIELD, FOCUS_RING, INLINE_LINK } from "../ui/interactive";
 
 type Props = {
   projectId: string;
@@ -32,7 +33,9 @@ export function saveErrorMessage(status: number, code: string | undefined): stri
   return "Something went wrong. Please try again.";
 }
 
-const field = "min-h-10 w-full rounded-glass border border-glass-edge bg-glass px-3 py-2 text-sm disabled:opacity-60";
+const field = `min-h-10 w-full rounded-glass border border-glass-edge bg-glass px-3 py-2 text-sm disabled:opacity-60 ${FIELD}`;
+/** Radios and the checkbox. */
+const CHOICE = `cursor-pointer disabled:cursor-default ${FOCUS_RING}`;
 
 export function CustomizeForm({ projectId, initialConfig, canCustomize, upgradeHref = "/dashboard/billing" }: Props) {
   const [config, setConfig] = useState(initialConfig);
@@ -89,7 +92,7 @@ export function CustomizeForm({ projectId, initialConfig, canCustomize, upgradeH
             <p className="font-medium">Customizing is a Pro feature.</p>
             <p className="mt-1 text-ink-muted">
               Free widgets use the default look and show the &quot;Powered by&quot; badge.{" "}
-              <Link href={upgradeHref} className="underline">
+              <Link href={upgradeHref} className={INLINE_LINK}>
                 Upgrade to Pro
               </Link>{" "}
               to change it.
@@ -110,7 +113,7 @@ export function CustomizeForm({ projectId, initialConfig, canCustomize, upgradeH
                   type="color"
                   value={config.buttonColor}
                   onChange={(e) => onHex(e.target.value)}
-                  className="h-10 w-14 cursor-pointer rounded-glass border border-glass-edge bg-glass p-1 disabled:opacity-60"
+                  className={`h-10 w-14 cursor-pointer rounded-glass border border-glass-edge bg-glass p-1 disabled:cursor-not-allowed disabled:opacity-60 ${FIELD}`}
                 />
                 <input
                   aria-label="Button color (hex)"
@@ -130,7 +133,7 @@ export function CustomizeForm({ projectId, initialConfig, canCustomize, upgradeH
                 {WIDGET_POSITIONS.map((p) => (
                   <label
                     key={p}
-                    className="flex min-h-10 cursor-pointer items-center gap-2 rounded-glass border border-glass-edge bg-glass px-3 py-2 text-sm has-[:checked]:border-accent has-[:disabled]:cursor-default has-[:disabled]:opacity-60"
+                    className="flex min-h-10 cursor-pointer items-center gap-2 rounded-glass border border-glass-edge bg-glass px-3 py-2 text-sm motion-safe:transition hover:border-ink/60 hover:bg-ink/10 active:bg-ink/20 has-[:checked]:border-accent has-[:checked]:hover:border-accent has-[:disabled]:cursor-default has-[:disabled]:opacity-60 has-[:disabled]:hover:bg-glass has-[:disabled]:not-has-[:checked]:hover:border-glass-edge"
                   >
                     <input
                       type="radio"
@@ -138,6 +141,7 @@ export function CustomizeForm({ projectId, initialConfig, canCustomize, upgradeH
                       value={p}
                       checked={config.position === p}
                       onChange={() => set("position", p)}
+                      className={CHOICE}
                     />
                     {POSITION_LABELS[p]}
                   </label>
@@ -166,7 +170,7 @@ export function CustomizeForm({ projectId, initialConfig, canCustomize, upgradeH
                 id="cz-animation"
                 value={config.animation}
                 onChange={(e) => set("animation", e.target.value as WidgetConfig["animation"])}
-                className={field}
+                className={`${field} cursor-pointer disabled:cursor-default`}
               >
                 {WIDGET_ANIMATIONS.map((a) => (
                   <option key={a} value={a}>
@@ -189,11 +193,12 @@ export function CustomizeForm({ projectId, initialConfig, canCustomize, upgradeH
               />
             </div>
 
-            <label className="flex min-h-10 items-center gap-2 text-sm">
+            <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm underline-offset-4 hover:underline has-[:disabled]:cursor-default has-[:disabled]:hover:no-underline">
               <input
                 type="checkbox"
                 checked={config.showBadge}
                 onChange={(e) => set("showBadge", e.target.checked)}
+                className={CHOICE}
               />
               Show the &quot;Powered by&quot; badge
             </label>

@@ -1,4 +1,3 @@
-import { cleanup, render, screen } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -6,19 +5,12 @@ vi.mock("../../components/auth/app-clerk-provider", () => ({ AppClerkProvider: (
 vi.mock("../../components/landing/header", () => ({ LandingHeader: () => null }));
 
 import Home, * as pageModule from "../../app/page";
-import { Demo } from "../../components/landing/demo";
-import { LandingWidget, landingWidgetKey } from "../../components/landing/landing-widget";
+import { landingWidgetKey } from "../../components/landing/landing-widget";
 
 const KEY = "pk_abcdef123456";
-// React 19 hoists <script async src> into <head>, so look at the whole document.
-const scripts = () => Array.from(document.querySelectorAll<HTMLScriptElement>("script[data-key]"));
 
 beforeEach(() => vi.unstubAllEnvs());
-afterEach(() => {
-  cleanup();
-  document.head.querySelectorAll("script[data-key]").forEach((n) => n.remove());
-  vi.unstubAllEnvs();
-});
+afterEach(() => vi.unstubAllEnvs());
 
 describe("landingWidgetKey", () => {
   test("reads LANDING_WIDGET_KEY from the environment on every call (request time)", () => {
@@ -45,53 +37,23 @@ describe("landingWidgetKey", () => {
   });
 });
 
-describe("LandingWidget", () => {
-  test("renders the widget script tag with the key", () => {
-    render(<LandingWidget widgetKey={KEY} />);
-    const [tag] = scripts();
-    expect(tag?.getAttribute("src")).toBe("/widget.js");
-    expect(tag?.getAttribute("data-key")).toBe(KEY);
-    expect(tag?.hasAttribute("async")).toBe(true);
-  });
-
-  test("renders nothing without a key", () => {
-    const { container } = render(<LandingWidget widgetKey={null} />);
-    expect(container.innerHTML).toBe("");
-    expect(scripts()).toHaveLength(0);
-  });
-});
-
 describe("landing page", () => {
   test("the page is dynamic, so the key is read per request and not inlined at build", () => {
     expect(pageModule.dynamic).toBe("force-dynamic");
   });
 
-  test("with the key set: the script is added in the browser and Demo points to the corner button", () => {
-    vi.stubEnv("LANDING_WIDGET_KEY", KEY);
-    const html = renderToStaticMarkup(<Home />);
-    // The client component adds the script on mount, so the server HTML has none.
-    expect(html).not.toContain("<script");
-    render(<Home />);
-    expect(scripts().map((s) => s.dataset.key)).toEqual([KEY]);
-    expect(html).toContain("the chat button in the corner of this page is the real");
-    expect(html).not.toContain("Preview of the chat widget"); // no static mock
+  test("no corner widget: the page adds no script, with or without a key", () => {
+    for (const key of ["", KEY]) {
+      vi.stubEnv("LANDING_WIDGET_KEY", key);
+      const html = renderToStaticMarkup(<Home />);
+      expect(html).not.toContain("<script");
+    }
   });
 
-  test("without the key: no script tag, no error, no mock", () => {
+  test("without the key: the demo says it is not available, with no chat input", () => {
     vi.stubEnv("LANDING_WIDGET_KEY", "");
     const html = renderToStaticMarkup(<Home />);
-    expect(html).not.toContain("<script");
     expect(html).toContain("The live demo is not available right now.");
-    expect(html).not.toContain("Preview of the chat widget");
-  });
-});
-
-describe("Demo", () => {
-  test("live text vs not-live text", () => {
-    const { rerender } = render(<Demo live />);
-    expect(screen.getByRole("heading", { name: "Live demo" })).toBeTruthy();
-    expect(screen.getByText(/real Askwell widget/)).toBeTruthy();
-    rerender(<Demo live={false} />);
-    expect(screen.getByText("The live demo is not available right now.")).toBeTruthy();
+    expect(html).not.toContain("Your message");
   });
 });

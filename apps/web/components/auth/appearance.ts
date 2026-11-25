@@ -25,13 +25,13 @@ const variables: Appearance["variables"] = {
 
 /** Our glass surface (components/ui/panel.tsx) on Clerk's cards. */
 const glass = {
-  // Longhands: Clerk sets its own border width, which beats the `border` shorthand.
-  borderWidth: "1px",
-  borderStyle: "solid",
-  borderColor: "var(--glass-edge)",
+  border: "1px solid var(--glass-edge)",
   boxShadow: "var(--glass-shadow)",
   backdropFilter: "blur(var(--blur-glass))",
 };
+
+/** Plan cards: Clerk forces their border width to 0, so the glass edge is drawn as an outline. */
+const planCard = { ...glass, background: "var(--glass)", outline: "1px solid var(--glass-edge)", outlineOffset: "-1px" };
 
 /**
  * Clerk mounts drawers, modals and popovers on <body>, outside the page's theme scope.
@@ -49,7 +49,7 @@ const monochrome = { avatarImage: { filter: "grayscale(1)" } };
 /** The default for every Clerk component, set on the provider. */
 export const APPEARANCE: Appearance = {
   variables,
-  elements: { ...portals, ...monochrome, cardBox: glass, pricingTableCard: { ...glass, background: "var(--glass)" } },
+  elements: { ...portals, ...monochrome, cardBox: glass, pricingTableCard: planCard },
 };
 
 /** Sign-in and sign-up: Clerk's dark base theme under our variables, as a glass card. */

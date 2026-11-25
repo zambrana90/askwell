@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CLICKABLE_INSET } from "../ui/interactive";
 
 /** A tab is current on its own page and on pages below it (a conversation thread). */
 function isCurrent(pathname: string, href: string, base: string): boolean {
@@ -25,7 +26,7 @@ export function ProjectSubnav({ projectId }: { projectId: string }) {
           key={item.href}
           href={item.href}
           aria-current={isCurrent(pathname, item.href, base) ? "page" : undefined}
-          className="inline-flex min-h-10 items-center whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm text-ink-muted hover:text-ink aria-[current=page]:border-accent aria-[current=page]:text-ink"
+          className={`inline-flex min-h-10 items-center whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm text-ink-muted ${CLICKABLE_INSET} hover:border-ink/40 hover:bg-ink/10 hover:text-ink active:bg-ink/20 aria-[current=page]:border-accent aria-[current=page]:text-ink aria-[current=page]:hover:border-accent`}
         >
           {item.label}
         </Link>

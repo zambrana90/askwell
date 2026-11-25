@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { PUBLIC_KEY_PREFIX } from "@askwell/shared";
 import { Panel } from "../ui/panel";
 import { Section } from "./section";
+import { BUTTON_VARIANTS, CLICKABLE, FOCUS_RING_INSET } from "../ui/interactive";
 
 const SNIPPET = `<script src="https://your-app.example/widget.js" data-key="${PUBLIC_KEY_PREFIX}…" async></script>`;
 /** How long the button says what happened. */
@@ -43,13 +44,13 @@ export function Install() {
           <button
             type="button"
             onClick={copy}
-            className="inline-flex min-h-10 min-w-20 items-center justify-center rounded-xl border border-glass-edge bg-glass px-3 text-sm font-medium transition hover:bg-glass-edge"
+            className={`inline-flex min-h-10 min-w-20 items-center justify-center rounded-xl px-3 text-sm font-medium ${CLICKABLE} ${BUTTON_VARIANTS.secondary}`}
           >
             {state === "copied" ? "Copied" : "Copy"}
           </button>
         </div>
         {/* Focusable, so keyboard users can scroll the long line. */}
-        <pre tabIndex={0} role="region" aria-label="Example script tag" className="overflow-x-auto p-4 text-sm md:p-6">
+        <pre tabIndex={0} role="region" aria-label="Example script tag" className={`overflow-x-auto p-4 text-sm md:p-6 ${FOCUS_RING_INSET}`}>
           <code>{SNIPPET}</code>
         </pre>
       </Panel>

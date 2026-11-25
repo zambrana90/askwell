@@ -1,13 +1,8 @@
 import type { ComponentProps } from "react";
+import { BUTTON_VARIANTS, CLICKABLE, type ButtonVariant } from "./interactive";
 import { Spinner } from "./spinner";
 
-const VARIANTS = {
-  primary: "bg-accent text-accent-ink hover:opacity-90",
-  secondary: "border border-glass-edge bg-glass text-ink backdrop-blur-glass hover:bg-glass-edge",
-  ghost: "text-ink hover:bg-glass-edge",
-} as const;
-
-export type ButtonVariant = keyof typeof VARIANTS;
+export type { ButtonVariant };
 
 type ButtonProps = ComponentProps<"button"> & {
   variant?: ButtonVariant;
@@ -28,7 +23,7 @@ export function Button({
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-glass px-4 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-glass px-4 text-sm font-medium ${CLICKABLE} disabled:cursor-not-allowed disabled:opacity-50 ${BUTTON_VARIANTS[variant]} ${className}`}
       {...props}
     >
       {loading ? <Spinner /> : null}

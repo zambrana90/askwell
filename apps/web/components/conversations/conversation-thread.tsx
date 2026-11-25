@@ -3,6 +3,7 @@ import type { ConversationThreadResponse } from "@askwell/shared";
 import { Panel } from "../ui/panel";
 import { messageTime, shortVisitorId } from "./format";
 import { RefreshButton } from "./refresh-button";
+import { MUTED_LINK } from "../ui/interactive";
 
 type Props = { projectId: string; thread: ConversationThreadResponse };
 
@@ -12,7 +13,7 @@ export function ConversationThread({ projectId, thread }: Props) {
     <section aria-labelledby="thread-heading">
       <Link
         href={`/dashboard/projects/${projectId}/conversations`}
-        className="inline-flex min-h-10 items-center text-sm text-ink-muted hover:text-ink"
+        className={`inline-flex min-h-10 items-center text-sm text-ink-muted ${MUTED_LINK}`}
       >
         ← Conversations
       </Link>

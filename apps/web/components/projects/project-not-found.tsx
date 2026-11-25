@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { EmptyState } from "../ui/empty-state";
+import { BUTTON_VARIANTS, CLICKABLE } from "../ui/interactive";
 
 export function ProjectNotFound() {
   return (
@@ -9,7 +10,7 @@ export function ProjectNotFound() {
       action={
         <Link
           href="/dashboard"
-          className="inline-flex min-h-10 items-center rounded-glass border border-glass-edge bg-glass px-4 text-sm font-medium hover:bg-glass-edge"
+          className={`inline-flex min-h-10 items-center rounded-glass px-4 text-sm font-medium ${CLICKABLE} ${BUTTON_VARIANTS.secondary}`}
         >
           Back to projects
         </Link>

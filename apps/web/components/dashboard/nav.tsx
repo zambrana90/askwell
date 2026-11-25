@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { BRAND_LINK, BUTTON_VARIANTS, CLICKABLE } from "../ui/interactive";
 
 export type NavItem = { label: string; href: string };
 
@@ -24,7 +25,7 @@ export function DashboardNav({ appName, items, userMenu, themeToggle }: Dashboar
         href={item.href}
         aria-current={pathname === item.href ? "page" : undefined}
         onClick={() => setOpen(false)}
-        className={`inline-flex min-h-10 items-center rounded-glass px-3 py-2 text-sm text-ink-muted hover:bg-glass-edge hover:text-ink aria-[current=page]:text-ink ${extra}`}
+        className={`inline-flex min-h-10 items-center rounded-glass px-3 py-2 text-sm text-ink-muted ${CLICKABLE} hover:bg-ink/10 hover:text-ink active:bg-ink/20 aria-[current=page]:text-ink ${extra}`}
       >
         {item.label}
       </Link>
@@ -33,7 +34,7 @@ export function DashboardNav({ appName, items, userMenu, themeToggle }: Dashboar
   return (
     <header className="sticky top-0 z-10 border-b border-glass-edge bg-glass backdrop-blur-glass">
       <div className="mx-auto flex h-14 max-w-5xl items-center gap-4 px-4">
-        <Link href="/dashboard" className="inline-flex min-h-10 items-center font-semibold">
+        <Link href="/dashboard" className={`inline-flex min-h-10 items-center font-semibold ${BRAND_LINK}`}>
           {appName}
         </Link>
         <nav aria-label="Main" className="hidden flex-1 items-center gap-1 md:flex">
@@ -48,7 +49,7 @@ export function DashboardNav({ appName, items, userMenu, themeToggle }: Dashboar
             aria-expanded={open}
             aria-controls="mobile-nav"
             onClick={() => setOpen((v) => !v)}
-            className="inline-flex size-10 items-center justify-center rounded-glass hover:bg-glass-edge md:hidden"
+            className={`inline-flex size-10 items-center justify-center rounded-glass md:hidden ${CLICKABLE} ${BUTTON_VARIANTS.ghost}`}
           >
             <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d={open ? "M6 6l12 12M18 6L6 18" : "M4 7h16M4 12h16M4 17h16"} />

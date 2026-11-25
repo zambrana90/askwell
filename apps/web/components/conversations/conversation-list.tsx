@@ -4,6 +4,7 @@ import { EmptyState } from "../ui/empty-state";
 import { Panel } from "../ui/panel";
 import { relativeTime, shortVisitorId } from "./format";
 import { RefreshButton } from "./refresh-button";
+import { CLICKABLE_INSET } from "../ui/interactive";
 
 type Props = { projectId: string; conversations: ConversationSummary[]; now: Date };
 
@@ -28,7 +29,7 @@ export function ConversationList({ projectId, conversations, now }: Props) {
               <li key={c.id}>
                 <Link
                   href={`/dashboard/projects/${projectId}/conversations/${c.id}`}
-                  className="flex flex-col gap-1 px-4 py-3 hover:bg-glass-edge"
+                  className={`flex flex-col gap-1 px-4 py-3 ${CLICKABLE_INSET} hover:bg-ink/10 active:bg-ink/20`}
                 >
                   {/* Text only: React escapes the preview. */}
                   <span className="truncate text-sm font-medium">{c.preview || "(no message)"}</span>

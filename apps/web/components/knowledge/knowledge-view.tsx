@@ -21,6 +21,7 @@ import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
 import { Panel } from "../ui/panel";
 import { call, checkFile, mimeFor, uploadToStorage } from "./api";
+import { FIELD, FOCUS_RING, INLINE_LINK } from "../ui/interactive";
 
 type Props = {
   projectId: string;
@@ -182,7 +183,7 @@ export function KnowledgeView({ projectId, initialSources, maxSources, limitMess
   }
 
   const input =
-    "min-h-10 rounded-glass border border-glass-edge bg-canvas px-3 text-sm text-ink disabled:opacity-50";
+    `min-h-10 rounded-glass border border-glass-edge bg-canvas px-3 text-sm text-ink disabled:opacity-50 ${FIELD}`;
 
   return (
     <>
@@ -248,7 +249,7 @@ export function KnowledgeView({ projectId, initialSources, maxSources, limitMess
               accept={ACCEPT}
               disabled={blocked || busy}
               onChange={(e) => void onFile(e.target.files?.[0])}
-              className="text-sm text-ink file:mr-3 file:min-h-10 file:rounded-glass file:border file:border-glass-edge file:bg-glass file:px-4 file:text-ink disabled:opacity-50"
+              className={`cursor-pointer rounded-glass text-sm text-ink file:mr-3 file:min-h-10 file:cursor-pointer file:rounded-glass file:border file:border-glass-edge file:bg-glass file:px-4 file:text-ink motion-safe:file:transition enabled:hover:file:border-ink/60 enabled:hover:file:bg-ink/10 enabled:active:file:bg-ink/20 disabled:cursor-not-allowed disabled:opacity-50 disabled:file:cursor-not-allowed ${FOCUS_RING}`}
             />
           </div>
           {uploading ? (
@@ -290,7 +291,7 @@ export function KnowledgeView({ projectId, initialSources, maxSources, limitMess
                     <p data-testid="paused-note" className="mt-1 text-sm text-ink-muted">
                       {pausedSourceNote(planName, maxSources)}{" "}
                       {planName === "Free" ? (
-                        <Link href="/dashboard/billing" className="underline">
+                        <Link href="/dashboard/billing" className={INLINE_LINK}>
                           Upgrade
                         </Link>
                       ) : null}

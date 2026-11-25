@@ -18,27 +18,44 @@ function features(plan: Plan): string[] {
   ];
 }
 
+/** The plan with the brighter edge and the tag. */
+const FEATURED: Plan = "pro";
+
 export function Pricing() {
   return (
     <Section id="pricing" title="Pricing">
       <div className="grid gap-4 md:grid-cols-2">
         {PLANS.map((plan) => (
-          <Panel key={plan} className="flex flex-col p-6" data-plan={plan}>
-            <h3 className="text-lg font-semibold">{NAMES[plan]}</h3>
-            <p className="mt-2">
-              <span className="text-4xl font-semibold">${PLAN_PRICES_USD_MONTHLY[plan]}</span>
+          <Panel
+            key={plan}
+            className={`landing-card flex flex-col p-6 md:p-8 ${plan === FEATURED ? "landing-card-featured" : ""}`}
+            data-plan={plan}
+          >
+            <div className="flex min-h-7 flex-wrap items-center justify-between gap-2">
+              <h3 className="text-lg font-semibold">{NAMES[plan]}</h3>
+              {plan === FEATURED ? (
+                <span className="rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-ink">Most popular</span>
+              ) : null}
+            </div>
+            <p className="mt-4">
+              <span className="text-5xl font-semibold tracking-tight">${PLAN_PRICES_USD_MONTHLY[plan]}</span>
               <span className="text-ink-muted"> / month</span>
             </p>
-            <ul className="mt-5 flex flex-col gap-2 text-sm text-ink-muted">
+            <ul className="mt-6 flex flex-col gap-3 border-t border-glass-edge pt-6 text-sm text-ink-muted">
               {features(plan).map((feature) => (
-                <li key={feature}>{feature}</li>
+                <li key={feature} className="flex items-start gap-3">
+                  <svg aria-hidden="true" viewBox="0 0 16 16" className="mt-0.5 size-4 shrink-0 text-ink" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 8.5l3 3 7-7" />
+                  </svg>
+                  {feature}
+                </li>
               ))}
             </ul>
           </Panel>
         ))}
       </div>
-      <div className="mt-6">
-        <LinkButton href="/sign-up" variant="secondary">
+      <div className="mt-8 flex justify-center">
+        <LinkButton href="/sign-up" variant="secondary" size="large">
           Start free
         </LinkButton>
       </div>
